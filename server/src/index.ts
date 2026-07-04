@@ -1,8 +1,8 @@
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
-import { env } from "./pkg/env/env.js";
+import { Env } from "./pkg/env/env.js";
 
-function createApp() {
+function createApp(env: Env) {
   const app = new Hono();
 
   app.get("/", (c) => {
@@ -12,7 +12,8 @@ function createApp() {
   return app;
 }
 
-const app = createApp();
+const env = new Env();
+const app = createApp(env);
 
 serve(
   {

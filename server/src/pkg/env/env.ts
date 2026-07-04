@@ -8,24 +8,32 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
 });
 
-type Env = z.infer<typeof envSchema>;
+type EnvConfig = z.infer<typeof envSchema>;
 
-let env: Env;
+export class Env {
+  NODE_ENV: string;
+  DATABASE_URL: string;
+  PORT: number;
 
-try {
-  env = envSchema.parse(process.env);
-} catch (error) {
-  if (error instanceof z.ZodError) {
-    console.error("❌ Environment validation failed:");
-    error.issues.forEach((issue) => {
-      const path = issue.path.length > 0 ? issue.path.join(".") : "root";
-      console.error(`  ${path}: ${issue.message}`);
-    });
-  } else {
-    console.error("❌ Failed to parse environment variables:", error);
+  constructor() {
+    try {
+      const config = envSchema.parse(process.env);
+      this.NODE_ENV = config.NODE_ENV;
+      this.DATABASE_URL = config.DATABASE_URL;
+      this.PORT = config.PORT;
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        console.error("❌ Environment validation failed:");
+        error.issues.forEach((issue) => {
+          const path = issue.path.length > 0 ? issue.path.join(".") : "root";
+          console.error(`  ${path}: ${issue.message}`);
+        });
+      } else {
+        console.error("❌ Failed to parse environment variables:", error);
+      }
+      throw error;
+    }
   }
-  throw error;
 }
 
-export { env };
-export type { Env };
+export type { EnvConfig };
