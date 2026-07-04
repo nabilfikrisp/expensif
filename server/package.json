@@ -8,11 +8,16 @@
   },
   "dependencies": {
     "@hono/node-server": "^2.0.8",
-    "hono": "^4.12.27"
+    "@libsql/client": "^0.17.4",
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "1.0.0-rc.4",
+    "hono": "^4.12.27",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^20.11.17",
-    "tsx": "^4.7.1",
+    "drizzle-kit": "1.0.0-rc.4",
+    "tsx": "^4.23.0",
     "typescript": "^5.8.3"
   }
 }
