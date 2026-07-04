@@ -24,7 +24,7 @@ try {
   } else {
     console.error("❌ Failed to parse environment variables:", error);
   }
-  process.exit(1);
+  throw error;
 }
 
 export { env };

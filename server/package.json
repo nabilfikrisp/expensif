@@ -9,6 +9,7 @@
     "lint:fix": "eslint src --fix",
     "format": "prettier --write src",
     "format:check": "prettier --check src",
+    "lintformat": "pnpm lint && pnpm run format:check",
     "prepare": "husky"
   },
   "devEngines": {

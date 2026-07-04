@@ -12,5 +12,5 @@ fi
 # Run checks for each affected workspace
 for workspace in $workspaces; do
   echo "Running checks in $workspace..."
-  (cd "$workspace" && pnpm check) || exit 1
+  (cd "$workspace" && pnpm lintformat) || exit 1
 done
