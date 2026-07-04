@@ -1,0 +1,16 @@
+#!/bin/bash
+set -e
+
+# Detect which workspaces have staged changes
+workspaces=$(sh .husky/detect-workspaces.sh)
+
+# If no workspaces affected, skip
+if [ -z "$workspaces" ]; then
+  exit 0
+fi
+
+# Run checks for each affected workspace
+for workspace in $workspaces; do
+  echo "Running checks in $workspace..."
+  (cd "$workspace" && pnpm check) || exit 1
+done
