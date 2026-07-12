@@ -1,19 +1,20 @@
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
-import { Env } from "./pkg/env/env.js";
+import { initEnv } from "./pkg/env/env.js";
+import type { EnvSchema } from "./pkg/env/env.js";
 
-function createApp(env: Env) {
+function initApp(env: EnvSchema) {
   const app = new Hono();
 
   app.get("/", (c) => {
-    return c.text("Hello Hono asf!");
+    return c.text(`Hello Hono is running in port: ${env.PORT}!`);
   });
 
   return app;
 }
 
-const env = new Env();
-const app = createApp(env);
+const env = initEnv();
+const app = initApp(env);
 
 serve(
   {
