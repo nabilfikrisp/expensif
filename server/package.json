@@ -10,6 +10,9 @@
     "format": "prettier --write src",
     "format:check": "prettier --check src",
     "lintformat": "pnpm lint && pnpm run format:check",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio",
     "prepare": "husky"
   },
   "devEngines": {
@@ -28,8 +31,8 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/node": "^20.11.17",
     "@hono/eslint-config": "^2.1.0",
+    "@types/node": "^20.19.43",
     "drizzle-kit": "1.0.0-rc.4",
     "prettier": "3.9.4",
     "tsx": "^4.23.0",

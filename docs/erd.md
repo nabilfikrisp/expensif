@@ -55,7 +55,6 @@ Fixed, global, predefined list (not per-user). Seed one row as `"Uncategorized"`
 | id     | uuid   | PK                       |
 | name   | string | e.g. "Food", "Transport" |
 | slug   | string | e.g. "food"              |
-| icon   | string | optional, for UI         |
 
 ## MESSAGES
 
