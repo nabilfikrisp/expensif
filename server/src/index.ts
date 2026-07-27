@@ -1,9 +1,9 @@
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
-import { initDb } from "./pkg/db/db.js";
-import type { Db } from "./pkg/db/db.js";
-import { initEnv } from "./pkg/env/env.js";
-import type { EnvSchema } from "./pkg/env/env.js";
+import { initDb } from "@/pkg/db";
+import type { Db } from "@/pkg/db";
+import { initEnv } from "@/pkg/env";
+import type { EnvSchema } from "@/pkg/env";
 
 interface Deps {
   db: Db;

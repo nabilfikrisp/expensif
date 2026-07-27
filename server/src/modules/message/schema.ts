@@ -1,5 +1,5 @@
 import { index, sqliteTable, text } from "drizzle-orm/sqlite-core";
-import { users, linkedAccounts } from "../user/schema.js";
+import { users, linkedAccounts } from "@/modules/user/schema";
 
 export const messages = sqliteTable(
   "messages",

@@ -1,7 +1,7 @@
 import { index, numeric, sqliteTable, text } from "drizzle-orm/sqlite-core";
-import { categories } from "../category/schema.js";
-import { messages } from "../message/schema.js";
-import { users } from "../user/schema.js";
+import { categories } from "@/modules/category/schema";
+import { messages } from "@/modules/message/schema";
+import { users } from "@/modules/user/schema";
 
 export const expenses = sqliteTable(
   "expenses",
