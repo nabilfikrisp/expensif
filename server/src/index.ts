@@ -1,34 +1,21 @@
-import { serve } from "@hono/node-server";
 import { Hono } from "hono";
+import { initBot, startBot } from "@/pkg/bot/telegram";
 import { initDb } from "@/pkg/db";
 import type { Db } from "@/pkg/db";
 import { initEnv } from "@/pkg/env";
 import type { EnvSchema } from "@/pkg/env";
+import { startHttp } from "@/pkg/http";
 
-interface Deps {
-  db: Db;
-  env: EnvSchema;
-}
-function initApp(deps: Deps) {
+function initApp(env: EnvSchema, db: Db) {
   const app = new Hono();
-
-  app.get("/", (c) => {
-    return c.text(`Hello Hono is running in port: ${deps.env.PORT}!`);
-  });
-
+  app.get("/", (c) => c.text(`Hello Hono is running in port: ${env.PORT}!`));
   return app;
 }
 
 const env = initEnv();
-const db = initDb({ databaseUrl: env.DATABASE_URL });
-const app = initApp({ db, env });
+const db = initDb(env.DATABASE_URL);
+const app = initApp(env, db);
+startHttp(app, env.PORT);
 
-serve(
-  {
-    fetch: app.fetch,
-    port: env.PORT,
-  },
-  (info) => {
-    console.log(`Server is running on http://localhost:${info.port} (${env.NODE_ENV})`);
-  }
-);
+const bot = initBot(env.TELEGRAM_BOT_TOKEN);
+startBot(bot);

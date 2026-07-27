@@ -2,11 +2,8 @@ import { createClient } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
 import { relations } from "./relations.js";
 
-interface Deps {
-  databaseUrl: string;
-}
-export function initDb(deps: Deps) {
-  const client = createClient({ url: deps.databaseUrl });
+export function initDb(databaseUrl: string) {
+  const client = createClient({ url: databaseUrl });
   const db = drizzle({ client, relations });
   return db;
 }
