@@ -7,6 +7,8 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL must not be empty"),
   PORT: z.coerce.number().int().positive().default(3000),
   TELEGRAM_BOT_TOKEN: z.string().min(1, "TELEGRAM_BOT_TOKEN must not be empty"),
+  OPENROUTER_API_KEY: z.string().min(1, "OPENROUTER_API_KEY must not be empty"),
+  OPENROUTER_MODEL: z.string().optional().default("openrouter/free"),
 });
 
 export type EnvSchema = z.infer<typeof envSchema>;

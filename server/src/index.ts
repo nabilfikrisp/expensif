@@ -1,10 +1,12 @@
 import { Hono } from "hono";
+import { initExpenseService } from "@/modules/expense/service";
 import { initBot, startBot } from "@/pkg/bot/telegram";
 import { initDb } from "@/pkg/db";
 import type { Db } from "@/pkg/db";
 import { initEnv } from "@/pkg/env";
 import type { EnvSchema } from "@/pkg/env";
 import { startHttp } from "@/pkg/http";
+import { initLlm } from "@/pkg/llm";
 
 function initApp(env: EnvSchema, db: Db) {
   const app = new Hono();
@@ -15,7 +17,9 @@ function initApp(env: EnvSchema, db: Db) {
 const env = initEnv();
 const db = initDb(env.DATABASE_URL);
 const app = initApp(env, db);
-startHttp(app, env.PORT);
+const llm = initLlm(env.OPENROUTER_API_KEY, env.OPENROUTER_MODEL);
+const expenseService = initExpenseService(llm, db);
+const bot = initBot(env.TELEGRAM_BOT_TOKEN, expenseService);
 
-const bot = initBot(env.TELEGRAM_BOT_TOKEN);
+startHttp(app, env.PORT);
 startBot(bot);
