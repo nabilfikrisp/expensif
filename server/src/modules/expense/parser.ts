@@ -1,6 +1,6 @@
 import { generateText, Output } from "ai";
 import { z } from "zod";
-import type { initLlm } from "@/pkg/llm";
+import type { Llm } from "@/pkg/llm";
 
 // different than db schema
 const expenseParseSchema = z.object({
@@ -15,7 +15,7 @@ const expenseParseSchema = z.object({
 export type ParsedExpense = z.infer<typeof expenseParseSchema>;
 
 export async function execParseExpense(
-  llm: ReturnType<typeof initLlm>,
+  llm: Llm,
   text: string,
   categories: { name: string; slug: string }[]
 ): Promise<ParsedExpense> {

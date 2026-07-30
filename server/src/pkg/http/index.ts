@@ -1,11 +1,18 @@
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
-import type { Db } from "@/pkg/db";
+
 import type { EnvSchema } from "@/pkg/env";
 
-export function initHttp(env: EnvSchema, db: Db) {
+export function initHttp(env: EnvSchema, authRoutes: Hono) {
   const app = new Hono();
   app.get("/", (c) => c.text(`Hello Hono is running in port: ${env.PORT}!`));
+  app.route("/auth", authRoutes);
+
+  app.onError((err, c) => {
+    console.error(err);
+    return c.json({ error: "Internal server error" }, 500);
+  });
+
   return app;
 }
 
