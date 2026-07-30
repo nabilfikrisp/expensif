@@ -3,14 +3,23 @@ import { Hono } from "hono";
 
 import type { EnvSchema } from "@/pkg/env";
 
+export const API_VERSION = "v1";
+
 export function initHttp(env: EnvSchema, authRoutes: Hono) {
   const app = new Hono();
   app.get("/", (c) => c.text(`Hello Hono is running in port: ${env.PORT}!`));
-  app.route("/auth", authRoutes);
+  app.route("/api/v1/auth", authRoutes);
 
   app.onError((err, c) => {
     console.error(err);
-    return c.json({ error: "Internal server error" }, 500);
+    return c.json(
+      {
+        success: false,
+        message: "application error",
+        error: "Internal server error",
+      },
+      500
+    );
   });
 
   return app;

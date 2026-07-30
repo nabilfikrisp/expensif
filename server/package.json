@@ -2,9 +2,9 @@
   "name": "expensif/server",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "export DEBUG='grammy*' && tsx watch src/index.ts",
     "build": "tsup src/index.ts --format esm --dts",
-    "start": "export DEBUG='grammy*' && node dist/index.js",
+    "start": "node dist/index.js",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "format": "prettier --write src",
