@@ -14,7 +14,7 @@ const expenseParseSchema = z.object({
 
 export type ParsedExpense = z.infer<typeof expenseParseSchema>;
 
-export async function parseExpense(
+export async function execParseExpense(
   llm: ReturnType<typeof initLlm>,
   text: string,
   categories: { name: string; slug: string }[]

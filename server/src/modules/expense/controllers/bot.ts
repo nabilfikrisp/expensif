@@ -19,7 +19,7 @@ export function registerExpenseCommands(bot: Bot, expenseService: ExpensesServic
         [
           "✅ Parsed expense:",
           `Item: ${result.item_name}`,
-          `Amount: ${result.amount} ${result.currency}`,
+          `Amount: Rp ${Intl.NumberFormat("id-ID").format(result.amount)}`,
           `Date: ${result.date}`,
           `Category: ${result.category}`,
           result.note ? `Note: ${result.note}` : null,

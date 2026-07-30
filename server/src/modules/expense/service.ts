@@ -1,4 +1,4 @@
-import { parseExpense } from "./parser";
+import { execParseExpense } from "./parser";
 import type { ParsedExpense } from "./parser";
 import type { Db } from "@/pkg/db";
 import type { Llm } from "@/pkg/llm";
@@ -16,7 +16,7 @@ const categories = [
 export function initExpenseService(llm: Llm, db: Db) {
   return {
     parseExpense(text: string): Promise<ParsedExpense> {
-      return parseExpense(llm, text, categories);
+      return execParseExpense(llm, text, categories);
     },
   };
 }
