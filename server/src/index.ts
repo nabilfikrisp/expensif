@@ -7,9 +7,10 @@ import { initEnv } from "@/pkg/env";
 import { initHttp, startHttp } from "@/pkg/http";
 import { initLlm } from "@/pkg/llm";
 import { initLogger } from "@/pkg/logger";
+import { shutdown } from "@/shutdown";
 
 const env = initEnv();
-const db = initDb(env.DATABASE_URL);
+const { db, client } = initDb(env.DATABASE_URL);
 const logger = initLogger(env);
 const llm = initLlm(env.OPENROUTER_API_KEY, env.OPENROUTER_MODEL);
 const expenseService = initExpenseService(llm, db);
@@ -19,5 +20,11 @@ const authRoutes = initAuthRoutes(env, authService);
 const app = initHttp(env, logger, authRoutes);
 const bot = initBot(env.TELEGRAM_BOT_TOKEN, logger, expenseService);
 
-startHttp(app, logger, env.PORT);
+const httpServer = startHttp(app, logger, env.PORT);
 startBot(bot, logger);
+
+process.on(
+  "SIGTERM",
+  () => void shutdown("SIGTERM", { logger, bot, httpServer, dbClient: client })
+);
+process.on("SIGINT", () => void shutdown("SIGINT", { logger, bot, httpServer, dbClient: client }));

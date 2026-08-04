@@ -36,7 +36,8 @@ export function initHttp(env: EnvSchema, logger: Logger, authRoutes: Hono) {
 }
 
 export function startHttp(app: Hono, logger: Logger, port: number) {
-  serve({ fetch: app.fetch, port }, (info) => {
+  const server = serve({ fetch: app.fetch, port }, (info) => {
     logger.info(`Server is running on http://localhost:${info.port}`);
   });
+  return server;
 }

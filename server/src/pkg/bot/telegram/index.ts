@@ -15,6 +15,10 @@ export function initBot(token: string, logger: Logger, expenseService: ExpensesS
 }
 
 export function startBot(bot: Bot, logger: Logger) {
-  void bot.start();
+  void bot.start().catch((err: unknown) => {
+    if (err instanceof Error && err.message !== "Aborted delay") {
+      logger.error({ err }, "Bot stopped with error");
+    }
+  });
   logger.info("Telegram Bot is running...");
 }

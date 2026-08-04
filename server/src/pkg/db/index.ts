@@ -5,7 +5,8 @@ import { relations } from "./relations.js";
 export function initDb(databaseUrl: string) {
   const client = createClient({ url: databaseUrl });
   const db = drizzle({ client, relations });
-  return db;
+  return { db, client };
 }
 
-export type Db = ReturnType<typeof initDb>;
+export type Db = ReturnType<typeof initDb>["db"];
+export type DbClient = ReturnType<typeof initDb>["client"];
