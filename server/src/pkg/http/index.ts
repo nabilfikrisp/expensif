@@ -2,6 +2,7 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { requestId } from "hono/request-id";
 import { secureHeaders } from "hono/secure-headers";
+import { rateLimiter } from "hono-rate-limiter";
 
 import { initHTTPLoggerMiddleware } from "./logger-middleware";
 import type { EnvSchema } from "@/pkg/env";
@@ -16,6 +17,14 @@ export function initHttp(env: EnvSchema, logger: Logger, authRoutes: Hono) {
   app.use(secureHeaders());
   app.use(requestId());
   app.use(HTTPLoggerMiddleware);
+
+  app.use(
+    rateLimiter({
+      windowMs: 15 * 60 * 1000,
+      limit: 100,
+      keyGenerator: (c) => c.req.header("x-forwarded-for") ?? "",
+    })
+  );
 
   app.get("/", (c) => c.text(`Hello Hono is running in port: ${env.PORT}!`));
   app.route("/api/v1/auth", authRoutes);

@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
+import { rateLimiter } from "hono-rate-limiter";
 
 import z from "zod";
 
@@ -15,6 +16,13 @@ import { API_VERSION } from "@/pkg/http";
 export function initAuthRoutes(env: EnvSchema, authService: AuthService) {
   const app = new Hono();
   const accessSecret = authService.encodeSecret(env.JWT_SECRET);
+
+  const rateLimit = (limit: number) =>
+    rateLimiter({
+      windowMs: 1 * 60 * 1000,
+      limit,
+      keyGenerator: (c) => c.req.header("x-forwarded-for") ?? "",
+    });
 
   function setRefreshCookie(c: Context, token: string) {
     setCookie(c, "refresh_token", token, {
@@ -40,7 +48,7 @@ export function initAuthRoutes(env: EnvSchema, authService: AuthService) {
     password: z.string().min(6),
     name: z.string().min(1),
   });
-  app.post("/register", zValidator("json", registerSchema), async (c) => {
+  app.post("/register", rateLimit(5), zValidator("json", registerSchema), async (c) => {
     const { email, password, name } = c.req.valid("json");
     const result = await authService.register(email, password, name);
     setRefreshCookie(c, result.refreshToken);
@@ -60,7 +68,7 @@ export function initAuthRoutes(env: EnvSchema, authService: AuthService) {
     email: z.email(),
     password: z.string().min(1),
   });
-  app.post("/login", zValidator("json", loginSchema), async (c) => {
+  app.post("/login", rateLimit(10), zValidator("json", loginSchema), async (c) => {
     const { email, password } = c.req.valid("json");
     const result = await authService.login(email, password);
     setRefreshCookie(c, result.refreshToken);
@@ -73,7 +81,7 @@ export function initAuthRoutes(env: EnvSchema, authService: AuthService) {
     });
   });
 
-  app.post("/refresh", async (c) => {
+  app.post("/refresh", rateLimit(20), async (c) => {
     const token = getRefreshCookie(c);
     if (!token) {
       return c.json(
