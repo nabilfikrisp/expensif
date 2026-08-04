@@ -1,7 +1,8 @@
 import type { Bot } from "grammy";
 import type { ExpensesService } from "@/modules/expense/service";
+import type { Logger } from "@/pkg/logger";
 
-export function registerExpenseCommands(bot: Bot, expenseService: ExpensesService) {
+export function registerExpenseCommands(bot: Bot, logger: Logger, expenseService: ExpensesService) {
   bot.command("expense", async (ctx) => {
     const text = ctx.match;
     if (!text) {
@@ -28,9 +29,7 @@ export function registerExpenseCommands(bot: Bot, expenseService: ExpensesServic
           .join("\n")
       );
     } catch (error) {
-      console.error("--- Raw parse error ---");
-      console.error("Input:", text);
-      console.error("Error:", error);
+      logger.error({ input: text, err: error }, "Failed to parse expense");
       await ctx.api.editMessageText(
         ctx.chat.id,
         sent.message_id,
