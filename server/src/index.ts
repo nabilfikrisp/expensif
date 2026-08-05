@@ -17,7 +17,7 @@ const expenseService = initExpenseService(llm, db);
 const authService = initAuthService(env, db);
 const authRoutes = initAuthRoutes(env, authService);
 
-const app = initHttp(env, logger, authRoutes);
+const app = initHttp(env, logger, [{ prefix: "auth", app: authRoutes }]);
 const bot = initBot(env.TELEGRAM_BOT_TOKEN, logger, expenseService);
 
 const httpServer = startHttp(app, logger, env.PORT);
