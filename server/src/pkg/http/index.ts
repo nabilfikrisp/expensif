@@ -12,7 +12,12 @@ import type { Logger } from "@/pkg/logger";
 export const API_VERSION = "v1";
 const API_PREFIX = `/api/${API_VERSION}`;
 
-export function initHttp(env: EnvSchema, logger: Logger, authRoutes: OpenAPIHono) {
+interface RouteModule {
+  prefix: string;
+  app: OpenAPIHono;
+}
+
+export function initHttp(env: EnvSchema, logger: Logger, routes: RouteModule[]) {
   const app = new OpenAPIHono();
   const HTTPLoggerMiddleware = initHTTPLoggerMiddleware(logger);
 
@@ -29,21 +34,21 @@ export function initHttp(env: EnvSchema, logger: Logger, authRoutes: OpenAPIHono
   );
 
   app.get("/", (c) => c.text(`Hello Hono is running in port: ${env.PORT}!`));
-  app.route(`${API_PREFIX}/auth`, authRoutes);
 
-  authRoutes.openAPIRegistry.registerComponent("securitySchemes", "Bearer", {
+  for (const route of routes) {
+    app.route(`${API_PREFIX}/${route.prefix}`, route.app);
+  }
+
+  app.openAPIRegistry.registerComponent("securitySchemes", "Bearer", {
     type: "http",
     scheme: "bearer",
     bearerFormat: "JWT",
   });
 
-  app.get(`${API_PREFIX}/doc`, (c) => {
-    const spec = authRoutes.getOpenAPI31Document({
-      openapi: "3.0.0",
-      info: { title: "Expensif API", version: API_VERSION },
-      servers: [{ url: `${API_PREFIX}/auth` }],
-    });
-    return c.json(spec);
+  app.doc(`${API_PREFIX}/doc`, {
+    openapi: "3.0.0",
+    info: { title: "Expensif API", version: API_VERSION },
+    servers: [{ url: "/" }],
   });
 
   app.get(`${API_PREFIX}/docs`, Scalar({ url: `${API_PREFIX}/doc` }));

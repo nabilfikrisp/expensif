@@ -1,51 +1,143 @@
-# Plan: Add Scalar API Docs to the Expensif Server
+# Plan: Multi-Module OpenAPI Docs (Option A — Auto-Merge)
 
 ## Overview
 
-Add interactive API documentation using **Scalar** to the Hono HTTP server. The integration uses `@hono/zod-openapi` to generate an OpenAPI spec from the existing Zod-based routes, and `@hono/scalar` to serve the interactive docs UI.
+Extend the OpenAPI/Scalar docs setup so **all HTTP modules** (auth, expense, category, user, etc.) are included in a single unified spec. Uses `OpenAPIHono`'s built-in `.route()` merging — child `OpenAPIHono` apps are automatically merged into the parent's spec.
 
-## Scope
+## Current State
 
-- **Auth routes only**: `/register`, `/login`, `/refresh`, `/logout`, `/me` (the only HTTP-exposed routes today).
-- Expense routes are Telegram bot commands (not HTTP), so they are out of scope.
-- No DB schema changes → no migrations needed.
+- Main app is `OpenAPIHono` (in `server/src/pkg/http/index.ts`)
+- `authRoutes` is a separate `OpenAPIHono` mounted at `/api/v1/auth`
+- Spec is currently generated manually via `authRoutes.getOpenAPI31Document()` (workaround because we never tested auto-merge)
+- Bearer security scheme is registered on `authRoutes.openAPIRegistry`
+- Only `auth` has HTTP routes today; `expense` has bot routes only; `category`, `message`, `user` are schema-only
 
-## Decisions
+## Goal
 
-- Docs UI served at `/docs`, OpenAPI JSON at `/doc`.
-- Spec generated from route definitions via `@hono/zod-openapi` (not a static OpenAPI file).
+When a new module adds HTTP routes as an `OpenAPIHono` sub-app and is mounted with `app.route()`, it **automatically appears** in the OpenAPI spec at `/api/v1/doc` and in Scalar at `/api/v1/docs` — no manual spec merging needed.
 
 ## Steps
 
-### 1. Add dependencies (`server/package.json`)
+### 1. Verify auto-merge works
 
-Install:
-- `@hono/zod-openapi` — provides `OpenAPIHono` and `createRoute`.
-- `@hono/scalar` — serves the Scalar UI and `/doc` JSON.
+Before refactoring, test that `app.doc()` on the main `OpenAPIHono` includes routes from a child `OpenAPIHono` mounted via `.route()`.
 
-### 2. Refactor auth controller to `OpenAPIHono` (`server/src/modules/auth/controllers/http.ts`)
+In `server/src/pkg/http/index.ts`:
+- Replace the manual `authRoutes.getOpenAPI31Document()` endpoint with `app.doc()`
+- Check if `/api/v1/doc` returns all auth routes
 
-- Switch `new Hono()` → `new OpenAPIHono()`.
-- Reuse existing Zod schemas (`registerSchema`, `loginSchema`) and define route objects via `createRoute` for all 5 endpoints:
-  - `POST /register` — 201 + 400/409
-  - `POST /login` — 200 + 401
-  - `POST /refresh` — 200 + 401
-  - `POST /logout` — 200
-  - `GET /me` — 200 + 401, **Bearer** security
-- Response schemas follow the existing `{ success, message, data }` envelope shape.
-- Replace `app.post`/`app.get` handlers with `app.openapi(route, handler)`; handler logic stays the same.
+If auto-merge works → proceed to step 2.
+If it doesn't → fall back to collecting route definitions manually (see Appendix A).
 
-### 3. Wire spec + Scalar UI in `initHttp` (`server/src/pkg/http/index.ts`)
+### 2. Refactor `initHttp` to accept variadic route modules
 
-- Register the Bearer security scheme:
-  `app.openAPIRegistry.registerComponent("securitySchemes", "Bearer", { type: "http", scheme: "bearer", bearerFormat: "JWT" })`
-- Serve spec at `/doc`:
-  `app.doc("/doc", { openapi, info: { title: "Expensif API", version: "v1" }, servers: [{ url: "/api/v1" }] })`
-- Mount UI at `/docs`:
-  `app.get("/docs", scalar({ url: "/doc" }))`
+**File:** `server/src/pkg/http/index.ts`
 
-### 4. Verify
+Change the function signature from:
+```ts
+export function initHttp(env: EnvSchema, logger: Logger, authRoutes: OpenAPIHono)
+```
+To:
+```ts
+type RouteModule = { prefix: string; app: OpenAPIHono };
+
+export function initHttp(env: EnvSchema, logger: Logger, routes: RouteModule[])
+```
+
+Mount all routes in a loop:
+```ts
+for (const route of routes) {
+  app.route(`${API_PREFIX}${route.prefix}`, route.app);
+}
+```
+
+### 3. Move Bearer security scheme to main app
+
+Move the `registerComponent` call from the auth controller or from the post-mount workaround to the main app's registry, so it applies globally:
+
+```ts
+app.openAPIRegistry.registerComponent("securitySchemes", "Bearer", {
+  type: "http",
+  scheme: "bearer",
+  bearerFormat: "JWT",
+});
+```
+
+### 4. Use `app.doc()` for spec generation
+
+Replace the manual spec endpoint:
+```ts
+app.doc(`${API_PREFIX}/doc`, {
+  openapi: "3.0.0",
+  info: { title: "Expensif API", version: API_VERSION },
+  servers: [{ url: API_PREFIX }],
+});
+```
+
+Scalar stays the same:
+```ts
+app.get(`${API_PREFIX}/docs`, Scalar({ url: `${API_PREFIX}/doc` }));
+```
+
+### 5. Update entry point (`server/src/index.ts`)
+
+Pass route modules as an array:
+```ts
+const app = initHttp(env, logger, [
+  { prefix: "/auth", app: authRoutes },
+]);
+```
+
+When adding future modules:
+```ts
+const app = initHttp(env, logger, [
+  { prefix: "/auth", app: authRoutes },
+  { prefix: "/expense", app: expenseRoutes },  // future
+  { prefix: "/category", app: categoryRoutes }, // future
+]);
+```
+
+### 6. Clean up auth controller
+
+- Remove `openAPIRegistry.registerComponent("securitySchemes", "Bearer", ...)` from `initHttp` (moved to step 3)
+- Remove the manual `getOpenAPI31Document()` call
+- The auth `OpenAPIHono` just defines routes — no spec generation logic
+
+### 7. Verify
 
 - `pnpm lint`
 - `pnpm run format:check`
-- Run `pnpm dev` and confirm Scalar UI loads at `http://localhost:<PORT>/docs`.
+- `pnpm dev` — confirm Scalar UI loads and shows all mounted routes
+- Confirm new modules auto-appear in spec when added to the routes array
+
+## Files Changed
+
+| File | Change |
+|---|---|
+| `server/src/pkg/http/index.ts` | Refactor `initHttp` to accept `RouteModule[]`, use `app.doc()`, move Bearer scheme |
+| `server/src/index.ts` | Pass routes as array to `initHttp` |
+| `server/src/modules/auth/controllers/http.ts` | Remove spec-related code if any remains |
+
+## Appendix A: Fallback if auto-merge doesn't work
+
+If `app.doc()` doesn't include child routes, the fallback is to manually merge specs:
+
+```ts
+app.get(`${API_PREFIX}/doc`, (c) => {
+  const specs = routes.map((r) => r.app.getOpenAPI31Document({...}));
+  const merged = mergeOpenAPISpecs(specs); // custom merge utility
+  return c.json(merged);
+});
+```
+
+Or use the `openapi-routes` batch registration pattern (Option B from the original discussion).
+
+## Appendix B: Adding a new module (future)
+
+Once this plan is implemented, adding HTTP docs for a new module is:
+
+1. Create `server/src/modules/<module>/controllers/http.ts`
+2. Use `new OpenAPIHono()` + `createRoute()` + `app.openapi()` (same pattern as auth)
+3. Export the `OpenAPIHono` instance
+4. Add `{ prefix: "/<module>", app: <module>Routes }` to the routes array in `index.ts`
+5. Done — spec and Scalar UI auto-update
