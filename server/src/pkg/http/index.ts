@@ -11,7 +11,7 @@ import type { EnvSchema } from "@/pkg/env";
 import type { Logger } from "@/pkg/logger";
 
 export const API_VERSION = "v1";
-const API_PREFIX = `/api/${API_VERSION}`;
+export const API_PREFIX = `/api/${API_VERSION}`;
 
 interface RouteModule {
   prefix: string;

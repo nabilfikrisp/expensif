@@ -1,136 +1,144 @@
-# Plan: Refresh Token Rotation
+# Auth Module Integration Tests with Vitest
 
-## Overview
+## Goal
 
-Implement refresh token rotation so that every time a refresh token is used, a new one is issued. This limits the window of token reuse if a refresh token is compromised.
+Add integration tests for the auth module using Vitest + in-memory SQLite. Tests exercise the full HTTP request lifecycle (middleware, validation, auth, database) via Hono's `app.request()`.
 
-## Current Behavior
+## Scope
 
-- `refresh()` returns only `{ accessToken }` — refresh token is never rotated
-- The old refresh token remains valid until expiry even after being used
+- Auth endpoints only: `POST /register`, `POST /login`, `POST /refresh`, `POST /logout`, `GET /me`
+- In-memory SQLite database with real migrations
+- No mocking of auth service — real service, real DB
+- Dedicated `test/` folder with single `initTest()` helper
 
-## Target Behavior
+## Files to Create/Modify
 
-On refresh:
-1. Issue a new refresh token (rotation)
-2. Set it as a new HTTP-only cookie
-3. Return the new access token in the response body (refresh token stays cookie-only)
+| File | Action | Purpose |
+|---|---|---|
+| `server/package.json` | Edit | Add `vitest` devDep, add `test` / `test:run` scripts |
+| `server/vitest.config.ts` | Create | Path aliases (`@/*` → `./src/*`), node environment |
+| `server/test/init.ts` | Create | Single `initTest()` that returns `{ app, db, client, env, authService }` |
+| `server/test/auth.test.ts` | Create | Auth endpoint integration tests |
 
-## Steps
+## Step-by-Step
 
-### 1. Uncomment rotation code in `server/src/modules/auth/service.ts`
+### Step 1: Install vitest
 
-**File:** `server/src/modules/auth/service.ts`
-**Lines:** 78-107 (`refresh()` method)
-
-- Uncomment lines 101-105 (the new refresh token signing)
-- Change the return value from `{ accessToken }` to `{ accessToken, refreshToken }`
-
-**Before:**
-```ts
-async refresh(token: string) {
-  // ... validation ...
-
-  const accessToken = await signToken(
-    { sub: userId },
-    accessSecret,
-    env.ACCESS_TOKEN_EXPIRES_IN_MINUTES
-  );
-  //   const newRefreshToken = await signToken(
-  //     { sub: userId, type: "refresh" },
-  //     refreshSecret,
-  //     env.REFRESH_TOKEN_EXPIRES_IN_DAYS
-  //   );
-
-  return { accessToken };
-},
+```bash
+cd server && pnpm add -D vitest
 ```
 
-**After:**
-```ts
-async refresh(token: string) {
-  // ... validation ...
+Add scripts to `server/package.json`:
 
-  const accessToken = await signToken(
-    { sub: userId },
-    accessSecret,
-    env.ACCESS_TOKEN_EXPIRES_IN_MINUTES
-  );
-  const refreshToken = await signToken(
-    { sub: userId, type: "refresh" },
-    refreshSecret,
-    env.REFRESH_TOKEN_EXPIRES_IN_DAYS
-  );
-
-  return { accessToken, refreshToken };
-},
+```json
+"test": "vitest",
+"test:run": "vitest run"
 ```
 
-### 2. Set new cookie on refresh in `server/src/modules/auth/controllers/http.ts`
+### Step 2: Create `server/vitest.config.ts`
 
-**File:** `server/src/modules/auth/controllers/http.ts`
-**Lines:** 168-182 (refresh handler)
-
-- Add `setRefreshCookie(c, result.refreshToken)` after `authService.refresh(token)`
-- Response body stays the same (only `accessToken`) — refresh token is HTTP-only cookie
-
-**Before:**
 ```ts
-app.openapi(refreshRoute, async (c) => {
-  const token = getRefreshCookie(c);
-  if (!token) {
-    throw AuthError.invalidToken();
-  }
-  const result = await authService.refresh(token);
-  return c.json(
-    {
-      success: true,
-      message: "success",
-      data: { accessToken: result.accessToken },
+import { defineConfig } from "vitest/config";
+import path from "path";
+
+export default defineConfig({
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "src"),
     },
-    200
-  );
+  },
+  test: {
+    environment: "node",
+  },
 });
 ```
 
-**After:**
-```ts
-app.openapi(refreshRoute, async (c) => {
-  const token = getRefreshCookie(c);
-  if (!token) {
-    throw AuthError.invalidToken();
-  }
-  const result = await authService.refresh(token);
-  setRefreshCookie(c, result.refreshToken);
-  return c.json(
-    {
-      success: true,
-      message: "success",
-      data: { accessToken: result.accessToken },
-    },
-    200
-  );
-});
+### Step 3: Create `server/test/init.ts`
+
+This file exports a single `initTest()` function that:
+
+1. Creates an in-memory libsql client (`:memory:`)
+2. Reads `src/pkg/db/migrations/20260718153133_initial_migration/migration.sql`
+3. Splits the SQL by `--> statement-breakpoint` and executes each statement
+4. Initializes Drizzle db with relations via `initDb` (or manually with `drizzle({ client, relations })`)
+5. Creates a test `EnvSchema` with:
+   - `JWT_SECRET`: a 32+ char test secret
+   - `DATABASE_URL`: `":memory:"`
+   - `NODE_ENV`: `"test"`
+   - Other required fields: dummy values (not used in auth tests)
+6. Initializes `authService` via `initAuthService(env, db)`
+7. Initializes `authRoutes` via `initAuthRoutes(env, authService)`
+8. Creates a silent pino logger (`level: "silent"`)
+9. Builds the full Hono app via `initHttp(env, logger, [{ prefix: "auth", app: authRoutes }])`
+10. Returns `{ app, db, client, env, authService }`
+
+Key implementation notes:
+- Use `createClient({ url: ":memory:" })` directly, not `initDb(":memory:")` — because `initDb` doesn't expose the raw client needed for migration execution
+- After creating the client, run migrations manually before calling `drizzle({ client, relations })`
+- The logger must be created with `initLogger({ NODE_ENV: "test", LOG_LEVEL: "silent" }` or equivalent — check how `initLogger` works in `src/pkg/logger/index.ts`
+
+### Step 4: Create `server/test/auth.test.ts`
+
+Each test calls `initTest()` in `beforeEach` to get a fresh DB and app.
+
+Test cases:
+
+```
+describe("Auth endpoints")
+
+  POST /api/v1/auth/register
+    ✓ returns 201 with accessToken
+    ✓ sets refresh_token cookie
+    ✓ returns 409 when email already exists
+
+  POST /api/v1/auth/login
+    ✓ returns 200 with accessToken for valid credentials
+    ✓ returns 401 for wrong password
+    ✓ returns 401 for nonexistent email
+
+  POST /api/v1/auth/refresh
+    ✓ returns 200 with new accessToken given valid refresh cookie
+    ✓ returns 401 without refresh cookie
+    ✓ returns 401 with invalid refresh token
+
+  POST /api/v1/auth/logout
+    ✓ clears refresh_token cookie
+
+  GET /api/v1/auth/me
+    ✓ returns 200 with user data given valid Bearer token
+    ✓ returns 401 without Authorization header
+    ✓ returns 401 with invalid token
 ```
 
-## Security Notes
+Testing pattern:
 
-- **Stateless rotation:** Old refresh token remains valid until expiry. This limits but doesn't eliminate token reuse.
-- **Cookie-only exposure:** New refresh token is never in the response body, only set as HTTP-only cookie.
-- **Future enhancement:** For full old-token invalidation, a token store (blacklist/rotation table) would be needed.
+```ts
+const res = await app.request("/api/v1/auth/register", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ email: "test@example.com", password: "pass123", name: "Test" }),
+});
+expect(res.status).toBe(201);
+const body = await res.json();
+expect(body.data.accessToken).toBeDefined();
+```
 
-## Files Changed
+For cookie-related tests, use `res.headers.get("set-cookie")` to inspect the `refresh_token` cookie.
 
-| File | Change |
-|---|---|
-| `server/src/modules/auth/service.ts` | Uncomment rotation code, return both tokens |
-| `server/src/modules/auth/controllers/http.ts` | Set new refresh cookie on refresh |
+For authenticated tests (`GET /me`), register a user first, then use the returned accessToken in the `Authorization: Bearer <token>` header.
 
-## Verification
+## Commands
 
-1. Register a new user → get access + refresh tokens
-2. Use refresh token to call `POST /api/v1/auth/refresh`
-3. Verify: new access token returned in response body
-4. Verify: new `refresh_token` cookie is set in response headers
-5. Verify: old refresh token still works until expiry (stateless)
-6. Run `pnpm lint` and `pnpm run format:check`
+```bash
+# In server/
+pnpm add -D vitest
+pnpm test            # watch mode
+pnpm test:run        # single run (CI)
+```
+
+## Not in Scope
+
+- Expense module tests (future)
+- Telegram bot tests
+- Unit tests for individual service functions
+- Client package testing
