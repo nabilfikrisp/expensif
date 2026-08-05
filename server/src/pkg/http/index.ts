@@ -1,6 +1,7 @@
 import { serve } from "@hono/node-server";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { Scalar } from "@scalar/hono-api-reference";
+import { cors } from "hono/cors";
 import { requestId } from "hono/request-id";
 import { secureHeaders } from "hono/secure-headers";
 import { rateLimiter } from "hono-rate-limiter";
@@ -17,14 +18,10 @@ interface RouteModule {
   app: OpenAPIHono;
 }
 
-export function initHttp(env: EnvSchema, logger: Logger, routes: RouteModule[]) {
-  const app = new OpenAPIHono();
-  const HTTPLoggerMiddleware = initHTTPLoggerMiddleware(logger);
-
+function useMiddleware(app: OpenAPIHono, logger: Logger) {
   app.use(secureHeaders());
   app.use(requestId());
-  app.use(HTTPLoggerMiddleware);
-
+  app.use(initHTTPLoggerMiddleware(logger));
   app.use(
     rateLimiter({
       windowMs: 15 * 60 * 1000,
@@ -32,13 +29,34 @@ export function initHttp(env: EnvSchema, logger: Logger, routes: RouteModule[]) 
       keyGenerator: (c) => c.req.header("x-forwarded-for") ?? "",
     })
   );
+}
 
-  app.get("/", (c) => c.text(`Hello Hono is running in port: ${env.PORT}!`));
+function useCors(app: OpenAPIHono) {
+  app.use(
+    cors({
+      origin: (origin, c) => {
+        if (!origin) {
+          return origin;
+        }
 
-  for (const route of routes) {
-    app.route(`${API_PREFIX}/${route.prefix}`, route.app);
-  }
+        const protocol = c.req.header("x-forwarded-proto") ?? "http";
+        const host = c.req.header("host");
+        const serverOrigin = `${protocol}://${host}`;
 
+        const allowedOrigins = [serverOrigin];
+
+        if (allowedOrigins.includes(origin)) {
+          return origin;
+        }
+
+        return "";
+      },
+      credentials: true,
+    })
+  );
+}
+
+function useOpenAPI(app: OpenAPIHono) {
   app.openAPIRegistry.registerComponent("securitySchemes", "Bearer", {
     type: "http",
     scheme: "bearer",
@@ -52,7 +70,9 @@ export function initHttp(env: EnvSchema, logger: Logger, routes: RouteModule[]) 
   });
 
   app.get(`${API_PREFIX}/docs`, Scalar({ url: `${API_PREFIX}/doc` }));
+}
 
+function useErrorHandler(app: OpenAPIHono, logger: Logger) {
   app.onError((err, c) => {
     logger.error({ err }, "Internal server error");
     return c.json(
@@ -64,6 +84,33 @@ export function initHttp(env: EnvSchema, logger: Logger, routes: RouteModule[]) 
       500
     );
   });
+
+  app.notFound((c) => {
+    return c.json(
+      {
+        success: false,
+        message: "not found",
+        error: "Not Found",
+      },
+      404
+    );
+  });
+}
+
+export function initHttp(env: EnvSchema, logger: Logger, routes: RouteModule[]) {
+  const app = new OpenAPIHono();
+
+  useMiddleware(app, logger);
+  useCors(app);
+  useOpenAPI(app);
+
+  app.get("/", (c) => c.text(`Hello Hono is running in port: ${env.PORT}!`));
+
+  for (const route of routes) {
+    app.route(`${API_PREFIX}/${route.prefix}`, route.app);
+  }
+
+  useErrorHandler(app, logger);
 
   return app;
 }

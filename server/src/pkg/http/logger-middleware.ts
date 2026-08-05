@@ -56,7 +56,7 @@ export function initHTTPLoggerMiddleware(logger: Logger): MiddlewareHandler {
     const method = c.req.method;
     const path = c.req.path;
 
-    const body = await parseBody(await c.req.text(), c.req.header("content-type") ?? null);
+    const requestBody = await parseBody(await c.req.text(), c.req.header("content-type") ?? null);
 
     // Skip logging for /docs and /doc endpoints to avoid cluttering logs with OpenAPI spec requests
     if (path.endsWith("/docs") || path.endsWith("/doc")) {
@@ -72,14 +72,19 @@ export function initHTTPLoggerMiddleware(logger: Logger): MiddlewareHandler {
     const responseBody = parseBody(resText, c.res.headers.get("content-type"));
 
     const logEntry: Record<string, unknown> = {
-      method,
-      path,
-      headers: Object.fromEntries(c.req.raw.headers.entries()),
-      query: c.req.query(),
-      body,
-      status,
-      duration: Math.round(performance.now() - start),
-      responseBody,
+      req: {
+        method,
+        path,
+        headers: Object.fromEntries(c.req.raw.headers.entries()),
+        query: c.req.query(),
+        body: requestBody,
+      },
+      res: {
+        status,
+        headers: Object.fromEntries(c.res.headers.entries()),
+        body: responseBody,
+        duration: Math.round(performance.now() - start),
+      },
     };
 
     if (c.error) {
