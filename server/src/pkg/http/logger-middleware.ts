@@ -58,6 +58,12 @@ export function initHTTPLoggerMiddleware(logger: Logger): MiddlewareHandler {
 
     const body = await parseBody(await c.req.text(), c.req.header("content-type") ?? null);
 
+    // Skip logging for /docs and /doc endpoints to avoid cluttering logs with OpenAPI spec requests
+    if (path.endsWith("/docs") || path.endsWith("/doc")) {
+      await next();
+      return;
+    }
+
     await next();
 
     const status = c.res.status;
