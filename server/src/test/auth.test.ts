@@ -1,5 +1,5 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
-import { beforeEach, describe, expect, expectTypeOf, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { initTest } from "./helper";
 import { API_PREFIX } from "@/pkg/http";
 
@@ -22,10 +22,10 @@ describe("Auth Endpoints", () => {
       });
 
       expect(res.status).toBe(201);
-    //   const body = await res.json();
-    //   expect(body.success).toBe(true);
-    //   expect(body.data.accessToken).toBeDefined();
-    //   expectTypeOf(body.data.accessToken).toBe("string");
+      //   const body = await res.json();
+      //   expect(body.success).toBe(true);
+      //   expect(body.data.accessToken).toBeDefined();
+      //   expectTypeOf(body.data.accessToken).toBe("string");
     });
   });
 });
