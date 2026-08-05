@@ -98,13 +98,13 @@ export function initAuthService(env: EnvSchema, db: Db) {
         accessSecret,
         env.ACCESS_TOKEN_EXPIRES_IN_MINUTES
       );
-      //   const newRefreshToken = await signToken(
-      //     { sub: userId, type: "refresh" },
-      //     refreshSecret,
-      //     env.REFRESH_TOKEN_EXPIRES_IN_DAYS
-      //   );
+      const newRefreshToken = await signToken(
+        { sub: userId, type: "refresh" },
+        refreshSecret,
+        env.REFRESH_TOKEN_EXPIRES_IN_DAYS
+      );
 
-      return { accessToken };
+      return { accessToken, refreshToken: newRefreshToken };
     },
     async getUser(userId: string) {
       const user = await db.select().from(users).where(eq(users.id, userId)).get();

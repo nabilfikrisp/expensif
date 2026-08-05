@@ -170,12 +170,13 @@ export function initAuthRoutes(env: EnvSchema, authService: AuthService) {
     if (!token) {
       throw AuthError.invalidToken();
     }
-    const result = await authService.refresh(token);
+    const { accessToken, refreshToken } = await authService.refresh(token);
+    setRefreshCookie(c, refreshToken);
     return c.json(
       {
         success: true,
         message: "success",
-        data: { accessToken: result.accessToken },
+        data: { accessToken },
       },
       200
     );
