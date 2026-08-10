@@ -1,4 +1,5 @@
 import type { MiddlewareHandler } from "hono";
+import { rateLimiter } from "hono-rate-limiter";
 
 import type { AuthService } from "@/modules/auth/service";
 
@@ -43,4 +44,12 @@ export function authMiddleware(
       );
     }
   };
+}
+
+export function rateLimit(limit: number) {
+  return rateLimiter({
+    windowMs: 1 * 60 * 1000,
+    limit,
+    keyGenerator: (c) => c.req.header("x-forwarded-for") ?? "",
+  });
 }

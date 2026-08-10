@@ -1,6 +1,9 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
 import { beforeEach, describe, expect, it } from "vitest";
+
 import { initTest } from "./helper";
+
+import { registerRespSchema } from "@/modules/auth/controllers/http/register";
 import { API_PREFIX } from "@/pkg/http";
 
 let app: OpenAPIHono;
@@ -22,10 +25,14 @@ describe("Auth Endpoints", () => {
       });
 
       expect(res.status).toBe(201);
-      //   const body = await res.json();
-      //   expect(body.success).toBe(true);
-      //   expect(body.data.accessToken).toBeDefined();
-      //   expectTypeOf(body.data.accessToken).toBe("string");
+      const respBody: unknown = await res.json();
+      const result = registerRespSchema.safeParse(respBody);
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        const response = result.data;
+        expect(response.data.accessToken).toBeTypeOf("string");
+      }
     });
   });
 });

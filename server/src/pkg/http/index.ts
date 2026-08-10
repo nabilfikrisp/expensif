@@ -25,7 +25,7 @@ function useMiddleware(app: OpenAPIHono, logger: Logger) {
   app.use(
     rateLimiter({
       windowMs: 15 * 60 * 1000,
-      limit: 100,
+      limit: 1000,
       keyGenerator: (c) => c.req.header("x-forwarded-for") ?? "",
     })
   );
