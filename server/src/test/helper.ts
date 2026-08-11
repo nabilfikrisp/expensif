@@ -11,7 +11,7 @@ import { initHttp } from "@/pkg/http";
 import { initLogger } from "@/pkg/logger";
 
 async function runMigrations(client: ReturnType<typeof createClient>) {
-  const migrationsDir = path.resolve(__dirname, "../src/pkg/db/migrations");
+  const migrationsDir = path.resolve(import.meta.dirname, "../pkg/db/migrations");
   const folders = fs
     .readdirSync(migrationsDir)
     .filter((f) => fs.statSync(path.join(migrationsDir, f)).isDirectory())

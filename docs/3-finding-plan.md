@@ -50,7 +50,7 @@ The full `Authorization` header is included in the logged `headers` object. Bear
 
 **Fix:** Redact `Authorization` in the `sanitize()` function, or exclude it from the logged headers entirely.
 
-### 5. Refresh Tokens Not Rotated
+### 5. Refresh Tokens Not Rotated (FIXED)
 `server/src/modules/auth/service.ts:101-105`
 
 The refresh endpoint issues a new token with identical payload and expiry. No rotation, no family tracking. A leaked refresh token works indefinitely until it expires. The `docs/2-token-plan.md` documents how to fix this — it just hasn't been implemented.

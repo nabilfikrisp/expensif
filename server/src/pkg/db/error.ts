@@ -1,8 +1,16 @@
 import { DrizzleQueryError } from "drizzle-orm";
 
+function rootCauseError(err: unknown): Error | null {
+  let current: unknown = err;
+  while (current instanceof Error && current.cause instanceof Error) {
+    current = current.cause;
+  }
+  return current instanceof Error ? current : null;
+}
+
 export function isUniqueConstraintError(err: unknown): boolean {
   // SQLite
-  if (err instanceof Error && err.message.includes("UNIQUE constraint failed")) {
+  if (rootCauseError(err)?.message.includes("UNIQUE constraint failed")) {
     return true;
   }
 
@@ -19,7 +27,7 @@ export function isUniqueConstraintError(err: unknown): boolean {
 
 export function isForeignKeyConstraintError(err: unknown): boolean {
   // SQLite
-  if (err instanceof Error && err.message.includes("FOREIGN KEY constraint failed")) {
+  if (rootCauseError(err)?.message.includes("FOREIGN KEY constraint failed")) {
     return true;
   }
 
