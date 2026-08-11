@@ -6,6 +6,7 @@ import type { JWTPayload } from "jose";
 import { AuthError } from "@/modules/auth/error";
 import { users } from "@/modules/user/schema";
 import type { Db } from "@/pkg/db";
+import { isUniqueConstraintError } from "@/pkg/db/error";
 import type { EnvSchema } from "@/pkg/env";
 
 export function initAuthService(env: EnvSchema, db: Db) {
@@ -19,17 +20,18 @@ export function initAuthService(env: EnvSchema, db: Db) {
       return payload;
     },
     async register(email: string, password: string, name: string) {
-      const existing = await db.select().from(users).where(eq(users.email, email)).get();
-
-      if (existing) {
-        throw AuthError.emailAlreadyRegistered();
-      }
-
       const id = crypto.randomUUID();
       const passwordHash = await hashPassword(password);
       const now = new Date().toISOString();
 
-      await db.insert(users).values({ id, email, passwordHash, name, createdAt: now }).run();
+      try {
+        await db.insert(users).values({ id, email, passwordHash, name, createdAt: now }).run();
+      } catch (err: unknown) {
+        if (isUniqueConstraintError(err)) {
+          throw AuthError.emailAlreadyRegistered();
+        }
+        throw err;
+      }
 
       const accessSecret = this.encodeSecret(env.JWT_SECRET, "access");
       const refreshSecret = this.encodeSecret(env.JWT_SECRET, "refresh");

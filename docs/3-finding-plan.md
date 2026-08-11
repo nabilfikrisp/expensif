@@ -59,7 +59,7 @@ The refresh endpoint issues a new token with identical payload and expiry. No ro
 
 ## Data Integrity
 
-### 6. Race Condition in Register
+### 6. Race Condition in Register (FIXED)
 `server/src/modules/auth/service.ts:21-32`
 
 Check-then-insert without a transaction. Two concurrent requests with the same email both pass the `existing` check. The UNIQUE constraint catches it, but the error surfaces as a generic 500 instead of a 409.
