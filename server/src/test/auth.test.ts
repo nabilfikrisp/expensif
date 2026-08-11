@@ -1,17 +1,24 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { initTest } from "./helper";
 
 import { registerRespSchema } from "@/modules/auth/controllers/http/register";
+import type { DbClient } from "@/pkg/db";
 import { API_PREFIX } from "@/pkg/http";
 import { errorRespSchema } from "@/shared/response.schema";
 
 let app: OpenAPIHono;
+let dbClient: DbClient;
 
 beforeEach(async () => {
   const testCtx = await initTest();
   app = testCtx.app;
+  dbClient = testCtx.client;
+});
+
+afterEach(() => {
+  dbClient.close();
 });
 
 describe("Auth Endpoints", () => {

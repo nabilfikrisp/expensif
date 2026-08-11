@@ -37,8 +37,8 @@ export function initAuthRoutes(env: EnvSchema, authService: AuthService) {
       return c.json(
         {
           success: false,
-          message: "Auth Error",
-          error: err.message,
+          message: err.message,
+          error: err.name,
         },
         err.statusCode as ContentfulStatusCode
       );
