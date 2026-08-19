@@ -4,9 +4,10 @@ import { Scalar } from "@scalar/hono-api-reference";
 import { cors } from "hono/cors";
 import { requestId } from "hono/request-id";
 import { secureHeaders } from "hono/secure-headers";
-import { rateLimiter } from "hono-rate-limiter";
 
 import { initHTTPLoggerMiddleware } from "./logger-middleware";
+import { rateLimit } from "./rate-limit-middleware";
+
 import type { EnvSchema } from "@/pkg/env";
 import type { Logger } from "@/pkg/logger";
 
@@ -23,10 +24,9 @@ function useMiddleware(app: OpenAPIHono, logger: Logger) {
   app.use(requestId());
   app.use(initHTTPLoggerMiddleware(logger));
   app.use(
-    rateLimiter({
-      windowMs: 15 * 60 * 1000,
+    rateLimit({
       limit: 1000,
-      keyGenerator: (c) => c.req.header("x-forwarded-for") ?? "",
+      minutes: 15,
     })
   );
 }

@@ -11,6 +11,6 @@ const LOG_LEVELS: Record<string, string> = {
 
 export function initLogger(env: EnvSchema): Logger {
   return pino({
-    level: LOG_LEVELS[env.NODE_ENV] ?? "info",
+    level: LOG_LEVELS[env.NODE_ENV],
   });
 }

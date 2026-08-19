@@ -1,8 +1,9 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 
-import { authMiddleware, rateLimit } from "@/modules/auth/controllers/middleware";
+import { authMiddleware } from "@/modules/auth/controllers/middleware";
 import type { AuthService } from "@/modules/auth/service";
 import { userRespSchema } from "@/modules/user/zod-schema";
+import { rateLimit } from "@/pkg/http/rate-limit-middleware";
 import { errorRespSchema, successRespSchema } from "@/shared/response.schema";
 
 export const meRespSchema = successRespSchema
@@ -16,7 +17,12 @@ export function initMeRoute(authService: AuthService, accessSecret: Uint8Array) 
     method: "get",
     path: "/me",
     security: [{ Bearer: [] }],
-    middleware: [authMiddleware(accessSecret, authService), rateLimit(10)] as const,
+    middleware: [
+      authMiddleware(accessSecret, authService),
+      rateLimit({
+        limit: 10,
+      }),
+    ] as const,
     responses: {
       200: {
         content: { "application/json": { schema: meRespSchema } },

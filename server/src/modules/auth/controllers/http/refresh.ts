@@ -1,9 +1,9 @@
 import { OpenAPIHono, createRoute } from "@hono/zod-openapi";
 
-import { rateLimit } from "@/modules/auth/controllers/middleware";
 import { AuthError } from "@/modules/auth/error";
 import type { AuthService } from "@/modules/auth/service";
 import type { CookieJar } from "@/pkg/cookies";
+import { rateLimit } from "@/pkg/http/rate-limit-middleware";
 import { errorRespSchema, tokenRespSchema } from "@/shared/response.schema";
 
 const refreshRespSchema = tokenRespSchema;
@@ -11,7 +11,11 @@ const refreshRespSchema = tokenRespSchema;
 const refreshRoute = createRoute({
   method: "post",
   path: "/refresh",
-  middleware: [rateLimit(10)],
+  middleware: [
+    rateLimit({
+      limit: 10,
+    }),
+  ],
   responses: {
     200: {
       content: { "application/json": { schema: refreshRespSchema } },

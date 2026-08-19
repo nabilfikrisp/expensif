@@ -1,8 +1,8 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 
-import { rateLimit } from "@/modules/auth/controllers/middleware";
 import type { AuthService } from "@/modules/auth/service";
 import type { CookieJar } from "@/pkg/cookies";
+import { rateLimit } from "@/pkg/http/rate-limit-middleware";
 import { errorRespSchema, tokenRespSchema } from "@/shared/response.schema";
 
 export const registerReqSchema = z
@@ -19,7 +19,11 @@ const registerRoute = createRoute({
   method: "post",
   path: "/register",
   request: { body: { content: { "application/json": { schema: registerReqSchema } } } },
-  middleware: [rateLimit(10)],
+  middleware: [
+    rateLimit({
+      limit: 10,
+    }),
+  ],
   responses: {
     201: {
       content: { "application/json": { schema: registerRespSchema } },
