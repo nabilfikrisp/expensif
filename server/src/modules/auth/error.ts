@@ -11,6 +11,15 @@ export class AuthError extends Error {
   static invalidToken() {
     return new AuthError("Invalid or expired token", 401);
   }
+  static missingBearerHeader() {
+    return new AuthError("Missing Bearer header", 401);
+  }
+  static invalidJwtPayload() {
+    return new AuthError("Invalid JWT payload", 401);
+  }
+  static failedVerifyingJwt() {
+    return new AuthError("Failed verifying JWT", 401);
+  }
 
   private constructor(
     message: string,

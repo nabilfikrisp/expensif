@@ -1,6 +1,7 @@
 import type { MiddlewareHandler } from "hono";
 import { rateLimiter } from "hono-rate-limiter";
 
+import { AuthError } from "@/modules/auth/error";
 import type { AuthService } from "@/modules/auth/service";
 
 export function authMiddleware(
@@ -10,38 +11,17 @@ export function authMiddleware(
   return async (c, next) => {
     const auth = c.req.header("Authorization");
     if (!auth?.startsWith("Bearer ")) {
-      return c.json(
-        {
-          success: false,
-          message: "Missing Bearer header",
-          error: "Unauthorized",
-        },
-        401
-      );
+      throw AuthError.missingBearerHeader();
     }
     try {
       const payload = await authService.verifyToken(auth.slice(7), secret);
       if (payload.sub === undefined) {
-        return c.json(
-          {
-            success: false,
-            message: "Invalid JWT payload",
-            error: "Unauthorized",
-          },
-          401
-        );
+        throw AuthError.invalidJwtPayload();
       }
       c.set("userId", payload.sub);
       await next();
     } catch {
-      return c.json(
-        {
-          success: false,
-          message: "Failed verifying JWT",
-          error: "Unauthorized",
-        },
-        401
-      );
+      throw AuthError.failedVerifyingJwt();
     }
   };
 }

@@ -5,6 +5,7 @@ import { initTest, registerAndGetToken } from "./helper";
 
 import { meRespSchema } from "@/modules/auth/controllers/http/me";
 import { registerRespSchema } from "@/modules/auth/controllers/http/register";
+import { AuthError } from "@/modules/auth/error";
 import type { DbClient } from "@/pkg/db";
 import { API_PREFIX } from "@/pkg/http";
 import { errorRespSchema, successRespSchema, tokenRespSchema } from "@/shared/response.schema";
@@ -125,7 +126,7 @@ describe("Auth Endpoints", () => {
       if (parseResult.success) {
         const response = parseResult.data;
         expect(response.success).toBe(false);
-        expect(response.message).toBe("Invalid email or password");
+        expect(response.message).toBe(AuthError.invalidCredentials().message);
       }
     });
 
@@ -144,7 +145,7 @@ describe("Auth Endpoints", () => {
       if (parseResult.success) {
         const response = parseResult.data;
         expect(response.success).toBe(false);
-        expect(response.message).toBe("Invalid email or password");
+        expect(response.message).toBe(AuthError.invalidCredentials().message);
       }
     });
   });
@@ -182,7 +183,7 @@ describe("Auth Endpoints", () => {
       if (parseResult.success) {
         const response = parseResult.data;
         expect(response.success).toBe(false);
-        expect(response.message).toBe("Invalid or expired token");
+        expect(response.message).toBe(AuthError.invalidToken().message);
       }
     });
 
@@ -200,7 +201,7 @@ describe("Auth Endpoints", () => {
       if (parseResult.success) {
         const response = parseResult.data;
         expect(response.success).toBe(false);
-        expect(response.message).toBe("Invalid or expired token");
+        expect(response.message).toBe(AuthError.invalidToken().message);
       }
     });
   });
@@ -263,7 +264,7 @@ describe("Auth Endpoints", () => {
       if (parseResult.success) {
         const response = parseResult.data;
         expect(response.success).toBe(false);
-        expect(response.message).toBe("Missing Bearer header");
+        expect(response.message).toBe(AuthError.missingBearerHeader().message);
       }
     });
 
@@ -281,7 +282,7 @@ describe("Auth Endpoints", () => {
       if (parseResult.success) {
         const response = parseResult.data;
         expect(response.success).toBe(false);
-        expect(response.message).toBe("Failed verifying JWT");
+        expect(response.message).toBe(AuthError.failedVerifyingJwt().message);
       }
     });
   });
