@@ -5,13 +5,13 @@ import type { AuthService } from "@/modules/auth/service";
 import { userRespSchema } from "@/modules/user/zod-schema";
 import { errorRespSchema, successRespSchema } from "@/shared/response.schema";
 
-export function initMeRoute(authService: AuthService, accessSecret: Uint8Array) {
-  const meResponseSchema = successRespSchema
-    .extend({
-      data: z.object({ user: userRespSchema }),
-    })
-    .openapi("MeResponse");
+export const meRespSchema = successRespSchema
+  .extend({
+    data: z.object({ user: userRespSchema }),
+  })
+  .openapi("MeResponse");
 
+export function initMeRoute(authService: AuthService, accessSecret: Uint8Array) {
   const meRoute = createRoute({
     method: "get",
     path: "/me",
@@ -19,7 +19,7 @@ export function initMeRoute(authService: AuthService, accessSecret: Uint8Array) 
     middleware: [authMiddleware(accessSecret, authService), rateLimit(10)] as const,
     responses: {
       200: {
-        content: { "application/json": { schema: meResponseSchema } },
+        content: { "application/json": { schema: meRespSchema } },
         description: "Current user",
       },
       401: {
