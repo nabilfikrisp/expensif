@@ -11,7 +11,7 @@ import type { EnvSchema } from "@/pkg/env";
 import type { Logger } from "@/pkg/logger";
 
 export const API_VERSION = "v1";
-const API_PREFIX = `/api/${API_VERSION}`;
+export const API_PREFIX = `/api/${API_VERSION}`;
 
 interface RouteModule {
   prefix: string;
@@ -25,7 +25,7 @@ function useMiddleware(app: OpenAPIHono, logger: Logger) {
   app.use(
     rateLimiter({
       windowMs: 15 * 60 * 1000,
-      limit: 100,
+      limit: 1000,
       keyGenerator: (c) => c.req.header("x-forwarded-for") ?? "",
     })
   );
@@ -78,8 +78,8 @@ function useErrorHandler(app: OpenAPIHono, logger: Logger) {
     return c.json(
       {
         success: false,
-        message: "application error",
-        error: "Internal server error",
+        message: "Internal server error",
+        error: "INTERNAL_SERVER_ERROR",
       },
       500
     );
@@ -89,8 +89,8 @@ function useErrorHandler(app: OpenAPIHono, logger: Logger) {
     return c.json(
       {
         success: false,
-        message: "not found",
-        error: "Not Found",
+        message: "Resource not found",
+        error: "NOT_FOUND",
       },
       404
     );
