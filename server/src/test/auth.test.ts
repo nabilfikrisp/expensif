@@ -83,7 +83,7 @@ describe("Auth Endpoints", () => {
       if (parseResult.success) {
         const response = parseResult.data;
         expect(response.success).toBe(false);
-        expect(response.error).toBe("AuthError");
+        expect(response.error).toBe(AuthError.emailAlreadyRegistered().code);
       }
     });
   });

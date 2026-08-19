@@ -38,7 +38,7 @@ export function initAuthRoutes(env: EnvSchema, authService: AuthService) {
         {
           success: false,
           message: err.message,
-          error: err.name,
+          error: err.code,
         },
         err.statusCode as ContentfulStatusCode
       );

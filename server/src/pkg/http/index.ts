@@ -78,8 +78,8 @@ function useErrorHandler(app: OpenAPIHono, logger: Logger) {
     return c.json(
       {
         success: false,
-        message: "application error",
-        error: "Internal server error",
+        message: "Internal server error",
+        error: "INTERNAL_SERVER_ERROR",
       },
       500
     );
@@ -89,8 +89,8 @@ function useErrorHandler(app: OpenAPIHono, logger: Logger) {
     return c.json(
       {
         success: false,
-        message: "not found",
-        error: "Not Found",
+        message: "Resource not found",
+        error: "NOT_FOUND",
       },
       404
     );
