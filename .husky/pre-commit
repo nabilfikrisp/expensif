@@ -1,16 +1,12 @@
 #!/bin/bash
 set -e
 
-# Detect which workspaces have staged changes
-workspaces=$(sh .husky/detect-workspaces.sh)
+staged_files=$(git diff --cached --name-only)
 
-# If no workspaces affected, skip
-if [ -z "$workspaces" ]; then
-  exit 0
+if echo "$staged_files" | grep -q "^server/"; then
+  pnpm --filter ./server lintformat
 fi
 
-# Run checks for each affected workspace
-for workspace in $workspaces; do
-  echo "Running checks in $workspace..."
-  (cd "$workspace" && pnpm lintformat) || exit 1
-done
+if echo "$staged_files" | grep -q "^client/"; then
+  pnpm --filter ./client lintformat
+fi
