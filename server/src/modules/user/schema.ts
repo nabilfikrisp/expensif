@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { index, sqliteTable, text, unique } from "drizzle-orm/sqlite-core";
 
 export const users = sqliteTable("users", {
@@ -5,7 +6,9 @@ export const users = sqliteTable("users", {
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   name: text("name").notNull(),
-  createdAt: text("created_at").notNull(),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const apiKeys = sqliteTable(
@@ -17,7 +20,9 @@ export const apiKeys = sqliteTable(
       .references(() => users.id),
     keyHash: text("key_hash").notNull(),
     label: text("label"),
-    createdAt: text("created_at").notNull(),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
     lastUsedAt: text("last_used_at"),
     revokedAt: text("revoked_at"),
   },
@@ -34,7 +39,9 @@ export const linkedAccounts = sqliteTable(
     platform: text("platform").notNull(),
     platformUserId: text("platform_user_id").notNull(),
     platformUsername: text("platform_username"),
-    linkedAt: text("linked_at").notNull(),
+    linkedAt: text("linked_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
   },
   (t) => [unique("linked_accounts_platform_user_unique").on(t.platform, t.platformUserId)]
 );

@@ -22,10 +22,9 @@ export function initAuthService(env: EnvSchema, db: Db) {
     async register(email: string, password: string, name: string) {
       const id = crypto.randomUUID();
       const passwordHash = await hashPassword(password);
-      const now = new Date().toISOString();
 
       try {
-        await db.insert(users).values({ id, email, passwordHash, name, createdAt: now }).run();
+        await db.insert(users).values({ id, email, passwordHash, name }).run();
       } catch (err: unknown) {
         if (isUniqueConstraintError(err)) {
           throw AuthError.emailAlreadyRegistered();

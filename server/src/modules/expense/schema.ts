@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { index, numeric, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { categories } from "@/modules/category/schema";
 import { messages } from "@/modules/message/schema";
@@ -17,8 +18,12 @@ export const expenses = sqliteTable(
     currency: text("currency").notNull().default("IDR"),
     expenseDate: text("expense_date").notNull(),
     note: text("note"),
-    createdAt: text("created_at").notNull(),
-    updatedAt: text("updated_at").notNull(),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
   },
   (t) => [
     index("expenses_user_id_date_idx").on(t.userId, t.expenseDate),
