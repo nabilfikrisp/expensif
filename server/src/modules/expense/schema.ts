@@ -8,11 +8,11 @@ export const expenses = sqliteTable(
   "expenses",
   {
     id: text("id").primaryKey(),
-    messageId: text("message_id").references(() => messages.id),
+    messageId: text("message_id").references(() => messages.id, { onDelete: "set null" }),
     userId: text("user_id")
       .notNull()
-      .references(() => users.id),
-    categoryId: text("category_id").references(() => categories.id),
+      .references(() => users.id, { onDelete: "cascade" }),
+    categoryId: text("category_id").references(() => categories.id, { onDelete: "set null" }),
     itemName: text("item_name").notNull(),
     amount: numeric("amount").notNull(),
     currency: text("currency").notNull().default("IDR"),

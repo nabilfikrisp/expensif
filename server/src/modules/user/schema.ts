@@ -17,7 +17,7 @@ export const apiKeys = sqliteTable(
     id: text("id").primaryKey(),
     userId: text("user_id")
       .notNull()
-      .references(() => users.id),
+      .references(() => users.id, { onDelete: "cascade" }),
     keyHash: text("key_hash").notNull(),
     label: text("label"),
     createdAt: text("created_at")
@@ -35,7 +35,7 @@ export const linkedAccounts = sqliteTable(
     id: text("id").primaryKey(),
     userId: text("user_id")
       .notNull()
-      .references(() => users.id),
+      .references(() => users.id, { onDelete: "cascade" }),
     platform: text("platform").notNull(),
     platformUserId: text("platform_user_id").notNull(),
     platformUsername: text("platform_username"),

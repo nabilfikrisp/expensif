@@ -8,8 +8,10 @@ export const messages = sqliteTable(
     id: text("id").primaryKey(),
     userId: text("user_id")
       .notNull()
-      .references(() => users.id),
-    linkedAccountId: text("linked_account_id").references(() => linkedAccounts.id),
+      .references(() => users.id, { onDelete: "cascade" }),
+    linkedAccountId: text("linked_account_id").references(() => linkedAccounts.id, {
+      onDelete: "set null",
+    }),
     rawText: text("raw_text").notNull(),
     externalMessageId: text("external_message_id"),
     parseStatus: text("parse_status").notNull(),
