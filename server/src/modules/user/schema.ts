@@ -43,5 +43,8 @@ export const linkedAccounts = sqliteTable(
       .notNull()
       .default(sql`CURRENT_TIMESTAMP`),
   },
-  (t) => [unique("linked_accounts_platform_user_unique").on(t.platform, t.platformUserId)]
+  (t) => [
+    index("linked_accounts_user_id_idx").on(t.userId),
+    unique("linked_accounts_platform_user_unique").on(t.platform, t.platformUserId),
+  ]
 );

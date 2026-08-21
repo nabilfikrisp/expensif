@@ -28,5 +28,6 @@ export const expenses = sqliteTable(
   (t) => [
     index("expenses_user_id_date_idx").on(t.userId, t.expenseDate),
     index("expenses_message_id_idx").on(t.messageId),
+    index("expenses_category_id_idx").on(t.categoryId),
   ]
 );

@@ -13,11 +13,14 @@ export const messages = sqliteTable(
       onDelete: "set null",
     }),
     rawText: text("raw_text").notNull(),
-    externalMessageId: text("external_message_id"),
+    externalMessageId: text("external_message_id").unique(),
     parseStatus: text("parse_status").notNull(),
     receivedAt: text("received_at")
       .notNull()
       .default(sql`CURRENT_TIMESTAMP`),
   },
-  (t) => [index("messages_user_id_idx").on(t.userId)]
+  (t) => [
+    index("messages_user_id_idx").on(t.userId),
+    index("messages_linked_account_id_idx").on(t.linkedAccountId),
+  ]
 );
