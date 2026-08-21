@@ -12,6 +12,7 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(32, "JWT_SECRET must be valid and not empty"),
   ACCESS_TOKEN_EXPIRES_IN_MINUTES: z.string().optional().default("15m"),
   REFRESH_TOKEN_EXPIRES_IN_DAYS: z.string().optional().default("7d"),
+  API_KEY_SECRET: z.string().min(32, "API_KEY_SECRET must be valid and not empty"),
 });
 
 export type EnvSchema = z.infer<typeof envSchema>;

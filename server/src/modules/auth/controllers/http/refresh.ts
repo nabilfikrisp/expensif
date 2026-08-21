@@ -13,7 +13,7 @@ const refreshRoute = createRoute({
   path: "/refresh",
   middleware: [
     rateLimit({
-      limit: 10,
+      limit: 50,
     }),
   ],
   responses: {
@@ -36,8 +36,16 @@ export function initRefreshRoute(authService: AuthService, cookieJar: CookieJar)
     if (!token) {
       throw AuthError.invalidToken();
     }
-    const { accessToken, refreshToken } = await authService.refresh(token);
+
+    const csrfCookie = cookieJar.getCsrfCookie(c);
+    const csrfHeader = c.req.header("X-CSRF-Token");
+    if (!csrfCookie || csrfCookie !== csrfHeader) {
+      throw AuthError.invalidCsrfToken();
+    }
+
+    const { accessToken, refreshToken, csrfToken } = await authService.refresh(token);
     cookieJar.setRefreshCookie(c, refreshToken);
+    cookieJar.setCsrfCookie(c, csrfToken);
     return c.json({ success: true, message: "success", data: { accessToken } }, 200);
   });
 

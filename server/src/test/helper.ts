@@ -52,6 +52,7 @@ export async function initTest() {
     TELEGRAM_BOT_TOKEN: "dummy",
     OPENROUTER_API_KEY: "dummy",
     OPENROUTER_MODEL: "dummy",
+    API_KEY_SECRET: "dummy",
   };
 
   const logger = initLogger(env);
@@ -65,7 +66,7 @@ export async function initTest() {
 export async function registerAndGetToken(
   app: OpenAPIHono,
   user: { email: string; password: string; name: string }
-): Promise<{ accessToken: string; refreshToken: string }> {
+) {
   const res = await app.request(`${API_PREFIX}/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -82,5 +83,11 @@ export async function registerAndGetToken(
   }
   const refreshToken = refreshCookie.split(";")[0].replace(/^refresh_token=/, "");
 
-  return { accessToken, refreshToken };
+  const csrfCookie = cookies.find((c) => c.startsWith("csrf_token="));
+  if (!csrfCookie) {
+    throw new Error("CSRF cookie not found");
+  }
+  const csrfToken = csrfCookie.split(";")[0].replace(/^csrf_token=/, "");
+
+  return { accessToken, refreshToken, csrfToken };
 }

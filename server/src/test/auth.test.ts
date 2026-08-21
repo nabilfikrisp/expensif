@@ -62,6 +62,23 @@ describe("Auth Endpoints", () => {
       expect(refreshCookie).toContain("Path=/api/v1/auth");
     });
 
+    it("sets csrf_token cookie without HttpOnly", async () => {
+      const res = await app.request(`${API_PREFIX}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(mockUser),
+      });
+
+      expect(res.status).toBe(201);
+
+      const cookies = res.headers.getSetCookie();
+      const csrfCookie = cookies.find((c) => c.startsWith("csrf_token="));
+
+      expect(csrfCookie).toBeDefined();
+      expect(csrfCookie).not.toContain("HttpOnly");
+      expect(csrfCookie).toContain("Path=/api/v1/auth");
+    });
+
     it("returns 409 when email already exists", async () => {
       await app.request(`${API_PREFIX}/auth/register`, {
         method: "POST",
@@ -148,15 +165,56 @@ describe("Auth Endpoints", () => {
         expect(response.message).toBe(AuthError.invalidCredentials().message);
       }
     });
+
+    it("sets refresh_token http only cookie", async () => {
+      await registerAndGetToken(app, mockUser);
+
+      const res = await app.request(`${API_PREFIX}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: mockUser.email, password: mockUser.password }),
+      });
+
+      expect(res.status).toBe(200);
+
+      const cookies = res.headers.getSetCookie();
+      const refreshCookie = cookies.find((c) => c.startsWith("refresh_token="));
+
+      expect(refreshCookie).toBeDefined();
+      expect(refreshCookie).toContain("HttpOnly");
+      expect(refreshCookie).toContain("Path=/api/v1/auth");
+    });
+
+    it("sets csrf_token cookie without HttpOnly", async () => {
+      await registerAndGetToken(app, mockUser);
+
+      const res = await app.request(`${API_PREFIX}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: mockUser.email, password: mockUser.password }),
+      });
+
+      expect(res.status).toBe(200);
+
+      const cookies = res.headers.getSetCookie();
+      const csrfCookie = cookies.find((c) => c.startsWith("csrf_token="));
+
+      expect(csrfCookie).toBeDefined();
+      expect(csrfCookie).not.toContain("HttpOnly");
+      expect(csrfCookie).toContain("Path=/api/v1/auth");
+    });
   });
 
   describe(`POST ${API_PREFIX}/auth/refresh`, () => {
     it("returns 200 with new accessToken given valid refresh cookie", async () => {
-      const { refreshToken } = await registerAndGetToken(app, mockUser);
+      const { refreshToken, csrfToken } = await registerAndGetToken(app, mockUser);
 
       const res = await app.request(`${API_PREFIX}/auth/refresh`, {
         method: "POST",
-        headers: { Cookie: `refresh_token=${refreshToken}` },
+        headers: {
+          Cookie: `refresh_token=${refreshToken}; csrf_token=${csrfToken}`,
+          "X-CSRF-Token": csrfToken,
+        },
       });
 
       expect(res.status).toBe(200);
@@ -168,6 +226,29 @@ describe("Auth Endpoints", () => {
         const response = parseResult.data;
         expect(response.data.accessToken).toBeTypeOf("string");
       }
+    });
+
+    it("returns 200 and rotates csrf cookie", async () => {
+      const { refreshToken, csrfToken } = await registerAndGetToken(app, mockUser);
+
+      const res = await app.request(`${API_PREFIX}/auth/refresh`, {
+        method: "POST",
+        headers: {
+          Cookie: `refresh_token=${refreshToken}; csrf_token=${csrfToken}`,
+          "X-CSRF-Token": csrfToken,
+        },
+      });
+
+      expect(res.status).toBe(200);
+
+      const cookies = res.headers.getSetCookie();
+      const newCsrfCookie = cookies.find((c) => c.startsWith("csrf_token="));
+      if (!newCsrfCookie) {
+        throw new Error("CSRF cookie not found after refresh");
+      }
+
+      const newCsrfToken = newCsrfCookie.split(";")[0].replace(/^csrf_token=/, "");
+      expect(newCsrfToken).not.toBe(csrfToken);
     });
 
     it("returns 401 without refresh cookie", async () => {
@@ -188,9 +269,14 @@ describe("Auth Endpoints", () => {
     });
 
     it("returns 401 with invalid refresh token", async () => {
+      const { csrfToken } = await registerAndGetToken(app, mockUser);
+
       const res = await app.request(`${API_PREFIX}/auth/refresh`, {
         method: "POST",
-        headers: { Cookie: "refresh_token=invalid-token-value" },
+        headers: {
+          Cookie: `refresh_token=invalid-token-value; csrf_token=${csrfToken}`,
+          "X-CSRF-Token": csrfToken,
+        },
       });
 
       expect(res.status).toBe(401);
@@ -204,10 +290,53 @@ describe("Auth Endpoints", () => {
         expect(response.message).toBe(AuthError.invalidToken().message);
       }
     });
+
+    it("returns 403 when CSRF header is missing", async () => {
+      const { refreshToken } = await registerAndGetToken(app, mockUser);
+
+      const res = await app.request(`${API_PREFIX}/auth/refresh`, {
+        method: "POST",
+        headers: { Cookie: `refresh_token=${refreshToken}` },
+      });
+
+      expect(res.status).toBe(403);
+      const respBody: unknown = await res.json();
+      const parseResult = errorRespSchema.safeParse(respBody);
+
+      expect(parseResult.success).toBe(true);
+      if (parseResult.success) {
+        const response = parseResult.data;
+        expect(response.success).toBe(false);
+        expect(response.message).toBe(AuthError.invalidCsrfToken().message);
+      }
+    });
+
+    it("returns 403 when CSRF header mismatches cookie", async () => {
+      const { refreshToken } = await registerAndGetToken(app, mockUser);
+
+      const res = await app.request(`${API_PREFIX}/auth/refresh`, {
+        method: "POST",
+        headers: {
+          Cookie: `refresh_token=${refreshToken}`,
+          "X-CSRF-Token": "wrong-csrf-value",
+        },
+      });
+
+      expect(res.status).toBe(403);
+      const respBody: unknown = await res.json();
+      const parseResult = errorRespSchema.safeParse(respBody);
+
+      expect(parseResult.success).toBe(true);
+      if (parseResult.success) {
+        const response = parseResult.data;
+        expect(response.success).toBe(false);
+        expect(response.message).toBe(AuthError.invalidCsrfToken().message);
+      }
+    });
   });
 
   describe(`POST ${API_PREFIX}/auth/logout`, () => {
-    it("clears refresh_token cookie", async () => {
+    it("clears refresh_token and csrf_token cookie", async () => {
       const { refreshToken } = await registerAndGetToken(app, mockUser);
 
       const res = await app.request(`${API_PREFIX}/auth/logout`, {
@@ -224,9 +353,13 @@ describe("Auth Endpoints", () => {
       }
 
       const setCookies = res.headers.getSetCookie();
-      const clearedCookie = setCookies.find((c) => c.startsWith("refresh_token="));
-      expect(clearedCookie).toBeDefined();
-      expect(clearedCookie).toContain("Max-Age=0");
+      const clearedRefreshCookie = setCookies.find((c) => c.startsWith("refresh_token="));
+      expect(clearedRefreshCookie).toBeDefined();
+      expect(clearedRefreshCookie).toContain("Max-Age=0");
+
+      const clearedCsrfCookie = setCookies.find((c) => c.startsWith("csrf_token="));
+      expect(clearedCsrfCookie).toBeDefined();
+      expect(clearedCsrfCookie).toContain("Max-Age=0");
     });
   });
 

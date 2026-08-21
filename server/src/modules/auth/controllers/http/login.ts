@@ -20,7 +20,7 @@ const loginRoute = createRoute({
   request: { body: { content: { "application/json": { schema: loginReqSchema } } } },
   middleware: [
     rateLimit({
-      limit: 10,
+      limit: 50,
     }),
   ],
   responses: {
@@ -42,6 +42,7 @@ export function initLoginRoute(authService: AuthService, cookieJar: CookieJar) {
     const { email, password } = c.req.valid("json");
     const result = await authService.login(email, password);
     cookieJar.setRefreshCookie(c, result.refreshToken);
+    cookieJar.setCsrfCookie(c, result.csrfToken);
     return c.json(
       { success: true, message: "success", data: { accessToken: result.accessToken } },
       200

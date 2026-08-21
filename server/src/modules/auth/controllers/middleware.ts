@@ -1,11 +1,12 @@
 import type { MiddlewareHandler } from "hono";
+import type { JWTPayload } from "jose";
 
 import { AuthError } from "@/modules/auth/error";
-import type { AuthService } from "@/modules/auth/service";
+
+export type VerifyTokenFn = (token: string) => Promise<JWTPayload>;
 
 export function authMiddleware(
-  secret: Uint8Array,
-  authService: AuthService
+  verifyToken: VerifyTokenFn
 ): MiddlewareHandler<{ Variables: { userId: string } }> {
   return async (c, next) => {
     const auth = c.req.header("Authorization");
@@ -13,7 +14,7 @@ export function authMiddleware(
       throw AuthError.missingBearerHeader();
     }
     try {
-      const payload = await authService.verifyToken(auth.slice(7), secret);
+      const payload = await verifyToken(auth.slice(7));
       if (payload.sub === undefined) {
         throw AuthError.invalidJwtPayload();
       }

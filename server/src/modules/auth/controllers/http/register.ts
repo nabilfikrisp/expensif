@@ -21,7 +21,7 @@ const registerRoute = createRoute({
   request: { body: { content: { "application/json": { schema: registerReqSchema } } } },
   middleware: [
     rateLimit({
-      limit: 10,
+      limit: 50,
     }),
   ],
   responses: {
@@ -47,6 +47,7 @@ export function initRegisterRoute(authService: AuthService, cookieJar: CookieJar
     const { email, password, name } = c.req.valid("json");
     const result = await authService.register(email, password, name);
     cookieJar.setRefreshCookie(c, result.refreshToken);
+    cookieJar.setCsrfCookie(c, result.csrfToken);
     return c.json(
       { success: true, message: "success", data: { accessToken: result.accessToken } },
       201

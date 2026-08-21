@@ -26,6 +26,9 @@ export class AuthError extends Error {
   static failedVerifyingJwt() {
     return new AuthError("Authentication failed", 401, "FAILED_VERIFYING_JWT");
   }
+  static invalidCsrfToken() {
+    return new AuthError("Invalid CSRF token", 403, "INVALID_CSRF_TOKEN");
+  }
 
   private constructor(
     message: string,

@@ -21,6 +21,7 @@ export function initLogoutRoute(cookieJar: CookieJar) {
 
   app.openapi(logoutRoute, (c) => {
     cookieJar.clearRefreshCookie(c);
+    cookieJar.clearCsrfCookie(c);
     return c.json({ success: true, message: "log out success" }, 200);
   });
 

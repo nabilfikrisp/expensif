@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { index, sqliteTable, text } from "drizzle-orm/sqlite-core";
-import { users, linkedAccounts } from "@/modules/user/schema";
+import { linkedAccounts } from "@/modules/linked-account/schema";
+import { users } from "@/modules/user/schema";
 
 export const messages = sqliteTable(
   "messages",

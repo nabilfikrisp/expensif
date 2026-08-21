@@ -14,7 +14,10 @@ import type { EnvSchema } from "@/pkg/env";
 
 export function initAuthRoutes(env: EnvSchema, authService: AuthService) {
   const app = new OpenAPIHono();
+
   const accessSecret = authService.encodeSecret(env.JWT_SECRET);
+  const verifyToken = (token: string) => authService.verifyToken(token, accessSecret);
+
   const cookieJar = initCookieJar(env);
 
   const registerRoute = initRegisterRoute(authService, cookieJar);
@@ -29,7 +32,7 @@ export function initAuthRoutes(env: EnvSchema, authService: AuthService) {
   const logoutRoute = initLogoutRoute(cookieJar);
   app.route("/", logoutRoute);
 
-  const meRoute = initMeRoute(authService, accessSecret);
+  const meRoute = initMeRoute({ authService, verifyToken });
   app.route("/", meRoute);
 
   app.onError((err, c) => {

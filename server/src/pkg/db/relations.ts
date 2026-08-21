@@ -1,8 +1,11 @@
 import { defineRelations } from "drizzle-orm";
+
+import { apiKeys } from "@/modules/api-key/schema";
 import { categories } from "@/modules/category/schema";
 import { expenses } from "@/modules/expense/schema";
+import { linkedAccounts } from "@/modules/linked-account/schema";
 import { messages } from "@/modules/message/schema";
-import { users, apiKeys, linkedAccounts } from "@/modules/user/schema";
+import { users } from "@/modules/user/schema";
 
 export const relations = defineRelations(
   { users, apiKeys, linkedAccounts, categories, messages, expenses },

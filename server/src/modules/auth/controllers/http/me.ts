@@ -1,6 +1,7 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 
 import { authMiddleware } from "@/modules/auth/controllers/middleware";
+import type { VerifyTokenFn } from "@/modules/auth/controllers/middleware";
 import type { AuthService } from "@/modules/auth/service";
 import { userRespSchema } from "@/modules/user/zod-schema";
 import { rateLimit } from "@/pkg/http/rate-limit-middleware";
@@ -12,13 +13,17 @@ export const meRespSchema = successRespSchema
   })
   .openapi("MeResponse");
 
-export function initMeRoute(authService: AuthService, accessSecret: Uint8Array) {
+interface MeRouteDeps {
+  authService: AuthService;
+  verifyToken: VerifyTokenFn;
+}
+export function initMeRoute(deps: MeRouteDeps) {
   const meRoute = createRoute({
     method: "get",
     path: "/me",
     security: [{ Bearer: [] }],
     middleware: [
-      authMiddleware(accessSecret, authService),
+      authMiddleware(deps.verifyToken),
       rateLimit({
         limit: 10,
       }),
@@ -39,7 +44,7 @@ export function initMeRoute(authService: AuthService, accessSecret: Uint8Array) 
 
   app.openapi(meRoute, async (c) => {
     const userId = c.get("userId");
-    const user = await authService.getUser(userId);
+    const user = await deps.authService.getUser(userId);
     return c.json({ success: true, message: "get user success", data: { user } }, 200);
   });
 

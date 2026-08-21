@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { SignJWT, jwtVerify } from "jose";
 import type { JWTPayload } from "jose";
+import { createHmac } from "node:crypto";
 
 import { AuthError } from "@/modules/auth/error";
 import { users } from "@/modules/user/schema";
@@ -12,8 +13,7 @@ import type { EnvSchema } from "@/pkg/env";
 export function initAuthService(env: EnvSchema, db: Db) {
   return {
     encodeSecret(raw: string, type: TokenType = "access"): Uint8Array {
-      const key = type === "refresh" ? raw + ":refresh" : raw;
-      return new TextEncoder().encode(key);
+      return createHmac("sha256", raw).update(type).digest();
     },
     async verifyToken(token: string, secret: Uint8Array): Promise<JWTPayload> {
       const { payload } = await jwtVerify(token, secret);
@@ -46,7 +46,9 @@ export function initAuthService(env: EnvSchema, db: Db) {
         env.REFRESH_TOKEN_EXPIRES_IN_DAYS
       );
 
-      return { accessToken, refreshToken };
+      const csrfToken = crypto.randomUUID();
+
+      return { accessToken, refreshToken, csrfToken };
     },
     async login(email: string, password: string) {
       const user = await db.select().from(users).where(eq(users.email, email)).get();
@@ -74,7 +76,9 @@ export function initAuthService(env: EnvSchema, db: Db) {
         env.REFRESH_TOKEN_EXPIRES_IN_DAYS
       );
 
-      return { accessToken, refreshToken };
+      const csrfToken = crypto.randomUUID();
+
+      return { accessToken, refreshToken, csrfToken };
     },
     async refresh(token: string) {
       const refreshSecret = this.encodeSecret(env.JWT_SECRET, "refresh");
@@ -105,7 +109,9 @@ export function initAuthService(env: EnvSchema, db: Db) {
         env.REFRESH_TOKEN_EXPIRES_IN_DAYS
       );
 
-      return { accessToken, refreshToken: newRefreshToken };
+      const csrfToken = crypto.randomUUID();
+
+      return { accessToken, refreshToken: newRefreshToken, csrfToken };
     },
     async getUser(userId: string) {
       const user = await db.select().from(users).where(eq(users.id, userId)).get();

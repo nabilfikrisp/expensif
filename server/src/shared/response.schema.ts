@@ -20,3 +20,20 @@ export const tokenRespSchema = successRespSchema
     data: z.object({ accessToken: z.string() }),
   })
   .openapi("TokenResponse");
+
+export const paginationSchema = z
+  .object({
+    page: z.number().int().openapi({ example: 1 }),
+    limit: z.number().int().openapi({ example: 10 }),
+    total: z.number().int().openapi({ example: 42 }),
+    totalPages: z.number().int().openapi({ example: 5 }),
+  })
+  .openapi("Pagination");
+
+export const paginatedRespSchema = <T extends z.ZodType>(dataSchema: T) =>
+  successRespSchema
+    .extend({
+      data: z.array(dataSchema),
+      pagination: paginationSchema,
+    })
+    .openapi("PaginatedResponse");

@@ -1,6 +1,9 @@
+import { initApiKeyRoutes } from "@/modules/api-key/controllers/http";
+import { initApiKeyService } from "@/modules/api-key/service";
 import { initAuthRoutes } from "@/modules/auth/controllers/http";
 import { initAuthService } from "@/modules/auth/service";
 import { initExpenseService } from "@/modules/expense/service";
+import { initLinkedAccountService } from "@/modules/linked-account/service";
 import { initBot, startBot } from "@/pkg/bot/telegram";
 import { initDb } from "@/pkg/db";
 import { initEnv } from "@/pkg/env";
@@ -17,7 +20,14 @@ const expenseService = initExpenseService(llm, db);
 const authService = initAuthService(env, db);
 const authRoutes = initAuthRoutes(env, authService);
 
-const app = initHttp(env, logger, [{ prefix: "auth", app: authRoutes }]);
+const linkedAccountService = initLinkedAccountService(db);
+const apiKeyService = initApiKeyService(env, db);
+const apiKeyRoutes = initApiKeyRoutes(env, apiKeyService, authService);
+
+const app = initHttp(env, logger, [
+  { prefix: "auth", app: authRoutes },
+  { prefix: "api-key", app: apiKeyRoutes },
+]);
 const bot = initBot(env.TELEGRAM_BOT_TOKEN, logger, expenseService);
 
 const httpServer = startHttp(app, logger, env.PORT);

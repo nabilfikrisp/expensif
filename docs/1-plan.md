@@ -1,144 +1,112 @@
-# Auth Module Integration Tests with Vitest
+# API Key Linker — Implementation Plan
 
-## Goal
+## Overview
 
-Add integration tests for the auth module using Vitest + in-memory SQLite. Tests exercise the full HTTP request lifecycle (middleware, validation, auth, database) via Hono's `app.request()`.
+Connects bot accounts (Telegram) to dashboard accounts via API keys.
 
-## Scope
+- **Dashboard**: Generate, list, revoke, delete API keys
+- **Bot**: `/link <key>` verifies key, creates `linked_accounts` row
 
-- Auth endpoints only: `POST /register`, `POST /login`, `POST /refresh`, `POST /logout`, `GET /me`
-- In-memory SQLite database with real migrations
-- No mocking of auth service — real service, real DB
-- Dedicated `test/` folder with single `initTest()` helper
+**Key format:** `ek_<32 hex>`, returned once. Stored as HMAC-SHA256 hash. Dashboard shows `ek_****<last-4>`.
 
-## Files to Create/Modify
+---
 
-| File | Action | Purpose |
-|---|---|---|
-| `server/package.json` | Edit | Add `vitest` devDep, add `test` / `test:run` scripts |
-| `server/vitest.config.ts` | Create | Path aliases (`@/*` → `./src/*`), node environment |
-| `server/test/init.ts` | Create | Single `initTest()` that returns `{ app, db, client, env, authService }` |
-| `server/test/auth.test.ts` | Create | Auth endpoint integration tests |
+## Completed Steps
 
-## Step-by-Step
+### Step 0: DB-Generated Timestamps ✅
 
-### Step 1: Install vitest
+All timestamp columns use `CURRENT_TIMESTAMP` defaults. No app-level timestamp passing.
 
-```bash
-cd server && pnpm add -D vitest
-```
+### Step 1: API Key Service ✅
 
-Add scripts to `server/package.json`:
+`server/src/modules/api-key/service.ts` — receives `env` + `db`.
 
-```json
-"test": "vitest",
-"test:run": "vitest run"
-```
+| Method | Description |
+|--------|-------------|
+| `generateApiKey(userId, label?)` | Generate `ek_<32hex>`, HMAC-SHA256 hash, return plaintext + hint |
+| `listApiKeys(userId, filters?)` | Paginated, filterable by `label`, `status` |
+| `verifyApiKey(plainKey)` | Hash → match → check not revoked → update `last_used_at` |
+| `revokeApiKey(userId, keyId)` | Soft revoke (set `revoked_at`) |
+| `deleteApiKey(userId, keyId)` | Hard delete |
 
-### Step 2: Create `server/vitest.config.ts`
+### Step 2: Linked Account Service ✅
 
-```ts
-import { defineConfig } from "vitest/config";
-import path from "path";
+`server/src/modules/linked-account/service.ts` — receives `db` only.
 
-export default defineConfig({
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "src"),
-    },
-  },
-  test: {
-    environment: "node",
-  },
-});
-```
+| Method | Description |
+|--------|-------------|
+| `linkAccount(userId, platform, platformUserId, username?)` | Insert, handles unique constraint → 409 |
+| `getLinkedAccount(platform, platformUserId)` | Find by `(platform, platform_user_id)`, 404 if not found |
+| `getUserByLinkedAccount(platform, platformUserId)` | Join with `users`, returns userId/name/email |
+| `unlinkAccount(userId, accountId)` | Delete, 404 if not found |
 
-### Step 3: Create `server/test/init.ts`
+### Step 3: Error Classes ✅
 
-This file exports a single `initTest()` function that:
+**API Key** (`api-key/error.ts`): `keyNotFound` (404), `keyAlreadyRevoked` (400), `keyInvalid` (401)
 
-1. Creates an in-memory libsql client (`:memory:`)
-2. Reads `src/pkg/db/migrations/20260718153133_initial_migration/migration.sql`
-3. Splits the SQL by `--> statement-breakpoint` and executes each statement
-4. Initializes Drizzle db with relations via `initDb` (or manually with `drizzle({ client, relations })`)
-5. Creates a test `EnvSchema` with:
-   - `JWT_SECRET`: a 32+ char test secret
-   - `DATABASE_URL`: `":memory:"`
-   - `NODE_ENV`: `"test"`
-   - Other required fields: dummy values (not used in auth tests)
-6. Initializes `authService` via `initAuthService(env, db)`
-7. Initializes `authRoutes` via `initAuthRoutes(env, authService)`
-8. Creates a silent pino logger (`level: "silent"`)
-9. Builds the full Hono app via `initHttp(env, logger, [{ prefix: "auth", app: authRoutes }])`
-10. Returns `{ app, db, client, env, authService }`
+**Linked Account** (`linked-account/error.ts`): `accountAlreadyLinked` (409), `accountNotFound` (404)
 
-Key implementation notes:
-- Use `createClient({ url: ":memory:" })` directly, not `initDb(":memory:")` — because `initDb` doesn't expose the raw client needed for migration execution
-- After creating the client, run migrations manually before calling `drizzle({ client, relations })`
-- The logger must be created with `initLogger({ NODE_ENV: "test", LOG_LEVEL: "silent" }` or equivalent — check how `initLogger` works in `src/pkg/logger/index.ts`
+### Step 4: HTTP Routes ✅
 
-### Step 4: Create `server/test/auth.test.ts`
+`server/src/modules/api-key/controllers/http/`
 
-Each test calls `initTest()` in `beforeEach` to get a fresh DB and app.
+| File | Method | Path | Description |
+|------|--------|------|-------------|
+| `generate.ts` | POST | `/api-keys` | Generate key, return plaintext once |
+| `list.ts` | GET | `/api-keys` | Paginated list with filters |
+| `revoke.ts` | PATCH | `/api-keys/:id` | Soft revoke |
+| `delete.ts` | DELETE | `/api-keys/:id` | Hard delete |
 
-Test cases:
+Route pattern: `interface XxxRouteDeps { apiKeyService, verifyToken }` + `authMiddleware`.
 
-```
-describe("Auth endpoints")
+### Step 5: CSRF Protection ✅
 
-  POST /api/v1/auth/register
-    ✓ returns 201 with accessToken
-    ✓ sets refresh_token cookie
-    ✓ returns 409 when email already exists
+Double Submit Cookie pattern on refresh endpoint.
 
-  POST /api/v1/auth/login
-    ✓ returns 200 with accessToken for valid credentials
-    ✓ returns 401 for wrong password
-    ✓ returns 401 for nonexistent email
+- Register/login set `refresh_token` (HttpOnly) + `csrf_token` (JS-accessible)
+- Refresh validates `csrf_token` cookie == `X-CSRF-Token` header
+- Logout clears both cookies
 
-  POST /api/v1/auth/refresh
-    ✓ returns 200 with new accessToken given valid refresh cookie
-    ✓ returns 401 without refresh cookie
-    ✓ returns 401 with invalid refresh token
+---
 
-  POST /api/v1/auth/logout
-    ✓ clears refresh_token cookie
+## Pending Steps
 
-  GET /api/v1/auth/me
-    ✓ returns 200 with user data given valid Bearer token
-    ✓ returns 401 without Authorization header
-    ✓ returns 401 with invalid token
-```
+### Step 6: Rate Limit Refactor
 
-Testing pattern:
+Add `RATE_LIMIT` env var (default `10`). Parent creates `rateLimit(env)` once, passes middleware to routes.
 
-```ts
-const res = await app.request("/api/v1/auth/register", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ email: "test@example.com", password: "pass123", name: "Test" }),
-});
-expect(res.status).toBe(201);
-const body = await res.json();
-expect(body.data.accessToken).toBeDefined();
-```
+### Step 7: Link Bot Command
 
-For cookie-related tests, use `res.headers.get("set-cookie")` to inspect the `refresh_token` cookie.
+`server/src/modules/user/controllers/bot/link.ts`
 
-For authenticated tests (`GET /me`), register a user first, then use the returned accessToken in the `Authorization: Bearer <token>` header.
+`/link <key>` flow:
+1. Empty key → usage instructions
+2. `verifyApiKey(key)` → null → "Invalid or already used"
+3. `getLinkedAccount("telegram", userId)` → exists → "Already linked"
+4. `linkAccount(userId, "telegram", userId, username)`
+5. Reply "Linked to {name} ({email})"
 
-## Commands
+### Step 8: Wire Into Bot
 
-```bash
-# In server/
-pnpm add -D vitest
-pnpm test            # watch mode
-pnpm test:run        # single run (CI)
-```
+Modify `server/src/pkg/bot/telegram/index.ts` — accept `apiKeyService` + `linkedAccountService`.
 
-## Not in Scope
+### Step 9: Wire Into Main Entry
 
-- Expense module tests (future)
-- Telegram bot tests
-- Unit tests for individual service functions
-- Client package testing
+Modify `server/src/index.ts` — init services, add `{ prefix: "api-key", app: apiKeyRoutes }`.
+
+### Step 10: Tests
+
+`server/src/test/api-key.test.ts` — generate, verify (valid/invalid/revoked), list, revoke.
+
+---
+
+## Design Decisions
+
+1. **HMAC-SHA256** for API keys (deterministic, unlike bcrypt)
+2. **`ek_` prefix** with `ek_****<last-4>` hint (like GitHub/Stripe)
+3. **Separate modules** (`api-key/`, `linked-account/`) not under `user/`
+4. **User must exist first** — bot only verifies and links
+5. **Unique constraint** — `(platform, platform_user_id)` prevents double-linking
+6. **Manual revoke only** — no key expiration
+7. **CSRF via Double Submit Cookie** — stateless, no DB storage
+8. **DB-generated timestamps** — prevent clock drift
