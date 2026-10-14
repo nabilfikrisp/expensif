@@ -71,11 +71,7 @@ Double Submit Cookie pattern on refresh endpoint.
 
 ## Pending Steps
 
-### Step 6: Rate Limit Refactor
-
-Add `RATE_LIMIT` env var (default `10`). Parent creates `rateLimit(env)` once, passes middleware to routes.
-
-### Step 7: Link Bot Command
+### Step 6: Link Bot Command
 
 `server/src/modules/user/controllers/bot/link.ts`
 
@@ -86,15 +82,15 @@ Add `RATE_LIMIT` env var (default `10`). Parent creates `rateLimit(env)` once, p
 4. `linkAccount(userId, "telegram", userId, username)`
 5. Reply "Linked to {name} ({email})"
 
-### Step 8: Wire Into Bot
+### Step 7: Wire Into Bot
 
 Modify `server/src/pkg/bot/telegram/index.ts` — accept `apiKeyService` + `linkedAccountService`.
 
-### Step 9: Wire Into Main Entry
+### Step 8: Wire Into Main Entry
 
 Modify `server/src/index.ts` — init services, add `{ prefix: "api-key", app: apiKeyRoutes }`.
 
-### Step 10: Tests
+### Step 9: Tests
 
 `server/src/test/api-key.test.ts` — generate, verify (valid/invalid/revoked), list, revoke.
 
