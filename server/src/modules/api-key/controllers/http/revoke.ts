@@ -22,7 +22,7 @@ export function initRevokeApiKeyRoute(deps: RevokeApiKeyRouteDeps) {
     path: "/{id}",
     security: [{ Bearer: [] }],
     request: { params: revokeApiKeyParamsSchema },
-    middleware: [authMiddleware(deps.verifyToken), rateLimit({ limit: 50 })] as const,
+    middleware: [authMiddleware(deps.verifyToken), rateLimit()] as const,
     responses: {
       200: {
         content: { "application/json": { schema: successRespSchema } },

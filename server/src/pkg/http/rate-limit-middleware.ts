@@ -1,16 +1,21 @@
+import { getConnInfo } from "@hono/node-server/conninfo";
 import { rateLimiter } from "hono-rate-limiter";
 
+import { DEFAULT_RATE_LIMIT } from "@/shared/consts";
+
 interface RateLimitOptions {
-  limit: number;
+  limit?: number;
   minutes?: number;
 }
 
-export function rateLimit(options: RateLimitOptions) {
-  const windowMs = (options.minutes ?? 1) * 60 * 1000;
+const FALLBACK = "127.0.0.1";
+
+export function rateLimit(options?: RateLimitOptions) {
+  const windowMs = (options?.minutes ?? 1) * 60 * 1000;
 
   return rateLimiter({
     windowMs,
-    limit: options.limit,
+    limit: options?.limit ?? DEFAULT_RATE_LIMIT,
     keyGenerator: (c) => {
       const cfIp = c.req.header("cf-connecting-ip");
       if (cfIp) {
@@ -22,7 +27,12 @@ export function rateLimit(options: RateLimitOptions) {
         return forwarded;
       }
 
-      return "unknown";
+      const info = getConnInfo(c);
+      if (info.remote.address) {
+        return info.remote.address;
+      }
+
+      return FALLBACK;
     },
   });
 }

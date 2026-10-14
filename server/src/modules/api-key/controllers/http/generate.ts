@@ -29,7 +29,7 @@ export function initGenerateApiKeyRoute(deps: GenerateApiKeyRouteDeps) {
     path: "/",
     security: [{ Bearer: [] }],
     request: { body: { content: { "application/json": { schema: generateApiKeyReqSchema } } } },
-    middleware: [authMiddleware(deps.verifyToken), rateLimit({ limit: 50 })] as const,
+    middleware: [authMiddleware(deps.verifyToken), rateLimit()] as const,
     responses: {
       201: {
         content: { "application/json": { schema: generateApiKeyRespSchema } },

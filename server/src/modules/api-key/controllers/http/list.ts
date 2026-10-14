@@ -20,7 +20,7 @@ export function initListApiKeysRoute(deps: ListApiKeysRouteDeps) {
     path: "/",
     security: [{ Bearer: [] }],
     request: { query: listApiKeysQuerySchema },
-    middleware: [authMiddleware(deps.verifyToken), rateLimit({ limit: 50 })] as const,
+    middleware: [authMiddleware(deps.verifyToken), rateLimit()] as const,
     responses: {
       200: {
         content: { "application/json": { schema: listApiKeysRespSchema } },

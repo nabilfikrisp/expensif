@@ -104,6 +104,12 @@ export function initApiKeyService(env: EnvSchema, db: Db) {
         },
       };
     },
+    /**
+     * Used by the Telegram bot `/link` command to validate an API key.
+     *
+     * Hashes the plain key, matches it in DB, and updates `last_used_at`.
+     * Returns the full key row if valid and not revoked, or `undefined`.
+     */
     async verifyApiKey(plainKey: string) {
       const keyHash = hashApiKey(env, plainKey);
 
@@ -119,10 +125,20 @@ export function initApiKeyService(env: EnvSchema, db: Db) {
       const result = await db
         .update(apiKeys)
         .set({ revokedAt: sql`(CURRENT_TIMESTAMP)` })
-        .where(and(eq(apiKeys.id, keyId), eq(apiKeys.userId, userId)))
+        .where(and(eq(apiKeys.id, keyId), eq(apiKeys.userId, userId), isNull(apiKeys.revokedAt)))
         .run();
 
       if (result.rowsAffected === 0) {
+        const [existing] = await db
+          .select({ id: apiKeys.id, revokedAt: apiKeys.revokedAt })
+          .from(apiKeys)
+          .where(and(eq(apiKeys.id, keyId), eq(apiKeys.userId, userId)))
+          .limit(1)
+          .all();
+
+        if (existing.revokedAt) {
+          throw ApiKeyError.keyAlreadyRevoked();
+        }
         throw ApiKeyError.keyNotFound();
       }
     },

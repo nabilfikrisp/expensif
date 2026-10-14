@@ -22,7 +22,7 @@ export function initDeleteApiKeyRoute(deps: DeleteApiKeyRouteDeps) {
     path: "/{id}",
     security: [{ Bearer: [] }],
     request: { params: deleteApiKeyParamsSchema },
-    middleware: [authMiddleware(deps.verifyToken), rateLimit({ limit: 50 })] as const,
+    middleware: [authMiddleware(deps.verifyToken), rateLimit()] as const,
     responses: {
       200: {
         content: { "application/json": { schema: successRespSchema } },

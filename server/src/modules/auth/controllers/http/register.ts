@@ -19,11 +19,7 @@ const registerRoute = createRoute({
   method: "post",
   path: "/register",
   request: { body: { content: { "application/json": { schema: registerReqSchema } } } },
-  middleware: [
-    rateLimit({
-      limit: 50,
-    }),
-  ],
+  middleware: [rateLimit()],
   responses: {
     201: {
       content: { "application/json": { schema: registerRespSchema } },

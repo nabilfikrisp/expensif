@@ -11,11 +11,7 @@ const refreshRespSchema = tokenRespSchema;
 const refreshRoute = createRoute({
   method: "post",
   path: "/refresh",
-  middleware: [
-    rateLimit({
-      limit: 50,
-    }),
-  ],
+  middleware: [rateLimit()],
   responses: {
     200: {
       content: { "application/json": { schema: refreshRespSchema } },

@@ -18,11 +18,7 @@ const loginRoute = createRoute({
   method: "post",
   path: "/login",
   request: { body: { content: { "application/json": { schema: loginReqSchema } } } },
-  middleware: [
-    rateLimit({
-      limit: 50,
-    }),
-  ],
+  middleware: [rateLimit()],
   responses: {
     200: {
       content: { "application/json": { schema: loginRespSchema } },
