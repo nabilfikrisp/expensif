@@ -1,4 +1,5 @@
 import { getConnInfo } from "@hono/node-server/conninfo";
+import type { Context, Next } from "hono";
 import { rateLimiter } from "hono-rate-limiter";
 
 import { DEFAULT_RATE_LIMIT } from "@/shared/consts";
@@ -11,6 +12,12 @@ interface RateLimitOptions {
 const FALLBACK = "127.0.0.1";
 
 export function rateLimit(options?: RateLimitOptions) {
+  if (process.env.NODE_ENV === "test") {
+    return (_c: Context, next: Next) => {
+      return next();
+    };
+  }
+
   const windowMs = (options?.minutes ?? 1) * 60 * 1000;
 
   return rateLimiter({
