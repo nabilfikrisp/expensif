@@ -1,9 +1,7 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 
 import type { ApiKeyService } from "@/modules/api-key/service";
-import { authMiddleware } from "@/modules/auth/controllers/middleware";
-import type { VerifyTokenFn } from "@/modules/auth/controllers/middleware";
-import { rateLimit } from "@/pkg/http/rate-limit-middleware";
+import type { AuthMiddleware } from "@/modules/auth/controllers/middleware";
 import { errorRespSchema, successRespSchema } from "@/shared/response.schema";
 
 const deleteApiKeyParamsSchema = z
@@ -14,7 +12,7 @@ const deleteApiKeyParamsSchema = z
 
 interface DeleteApiKeyRouteDeps {
   apiKeyService: ApiKeyService;
-  verifyToken: VerifyTokenFn;
+  authMiddleware: AuthMiddleware;
 }
 export function initDeleteApiKeyRoute(deps: DeleteApiKeyRouteDeps) {
   const deleteApiKeyRoute = createRoute({
@@ -22,7 +20,7 @@ export function initDeleteApiKeyRoute(deps: DeleteApiKeyRouteDeps) {
     path: "/{id}",
     security: [{ Bearer: [] }],
     request: { params: deleteApiKeyParamsSchema },
-    middleware: [authMiddleware(deps.verifyToken), rateLimit()] as const,
+    middleware: [deps.authMiddleware] as const,
     responses: {
       200: {
         content: { "application/json": { schema: successRespSchema } },

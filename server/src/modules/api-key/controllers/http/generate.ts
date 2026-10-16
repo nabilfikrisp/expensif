@@ -2,9 +2,7 @@ import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 
 import type { ApiKeyService } from "@/modules/api-key/service";
 import { apiKeyRespSchema } from "@/modules/api-key/zod-schema";
-import { authMiddleware } from "@/modules/auth/controllers/middleware";
-import type { VerifyTokenFn } from "@/modules/auth/controllers/middleware";
-import { rateLimit } from "@/pkg/http/rate-limit-middleware";
+import type { AuthMiddleware } from "@/modules/auth/controllers/middleware";
 import { errorRespSchema, successRespSchema } from "@/shared/response.schema";
 
 const generateApiKeyReqSchema = z
@@ -21,7 +19,7 @@ const generateApiKeyRespSchema = successRespSchema
 
 interface GenerateApiKeyRouteDeps {
   apiKeyService: ApiKeyService;
-  verifyToken: VerifyTokenFn;
+  authMiddleware: AuthMiddleware;
 }
 export function initGenerateApiKeyRoute(deps: GenerateApiKeyRouteDeps) {
   const generateApiKeyRoute = createRoute({
@@ -29,7 +27,7 @@ export function initGenerateApiKeyRoute(deps: GenerateApiKeyRouteDeps) {
     path: "/",
     security: [{ Bearer: [] }],
     request: { body: { content: { "application/json": { schema: generateApiKeyReqSchema } } } },
-    middleware: [authMiddleware(deps.verifyToken), rateLimit()] as const,
+    middleware: [deps.authMiddleware] as const,
     responses: {
       201: {
         content: { "application/json": { schema: generateApiKeyRespSchema } },

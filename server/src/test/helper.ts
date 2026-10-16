@@ -5,11 +5,13 @@ import fs from "fs";
 import path from "path";
 
 import { initAuthRoutes } from "@/modules/auth/controllers/http";
+import { initAuthMiddleware } from "@/modules/auth/controllers/middleware";
 import { initAuthService } from "@/modules/auth/service";
 import { relations } from "@/pkg/db/relations";
 import type { EnvSchema } from "@/pkg/env";
 import { API_PREFIX, initHttp } from "@/pkg/http";
 import { initLogger } from "@/pkg/logger";
+import { initRateLimiters } from "@/shared/rate-limit";
 
 async function runMigrations(client: ReturnType<typeof createClient>) {
   const migrationsDir = path.resolve(import.meta.dirname, "../pkg/db/migrations");
@@ -46,6 +48,7 @@ export async function initTest() {
     NODE_ENV: "test",
     DATABASE_URL: ":memory:",
     PORT: 0,
+    DEPLOY_PROXY: "none",
     JWT_SECRET: "test-secret-must-be-at-least-32-characters",
     ACCESS_TOKEN_EXPIRES_IN_MINUTES: "15m",
     REFRESH_TOKEN_EXPIRES_IN_DAYS: "7d",
@@ -57,8 +60,13 @@ export async function initTest() {
 
   const logger = initLogger(env);
   const authService = initAuthService(env, db);
-  const authRoutes = initAuthRoutes(env, authService);
-  const app = initHttp(env, logger, [{ prefix: "auth", app: authRoutes }]);
+  const accessSecret = authService.encodeSecret(env.JWT_SECRET);
+  const authMiddleware = initAuthMiddleware((t) => authService.verifyToken(t, accessSecret));
+  const rateLimiters = initRateLimiters(env.DEPLOY_PROXY);
+  const authRoutes = initAuthRoutes(env, authService, authMiddleware, rateLimiters);
+  const app = initHttp(env, logger, [{ prefix: "auth", app: authRoutes }], {
+    defaultLimiter: rateLimiters.default,
+  });
 
   return { app, db, client, env, authService };
 }

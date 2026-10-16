@@ -8,29 +8,21 @@ import { initRevokeApiKeyRoute } from "./revoke";
 
 import { ApiKeyError } from "@/modules/api-key/error";
 import type { ApiKeyService } from "@/modules/api-key/service";
-import type { AuthService } from "@/modules/auth/service";
-import type { EnvSchema } from "@/pkg/env";
+import type { AuthMiddleware } from "@/modules/auth/controllers/middleware";
 
-export function initApiKeyRoutes(
-  env: EnvSchema,
-  apiKeyService: ApiKeyService,
-  authService: AuthService
-) {
+export function initApiKeyRoutes(apiKeyService: ApiKeyService, authMiddleware: AuthMiddleware) {
   const app = new OpenAPIHono();
 
-  const accessSecret = authService.encodeSecret(env.JWT_SECRET);
-  const verifyToken = (token: string) => authService.verifyToken(token, accessSecret);
-
-  const generateApiKeyRoute = initGenerateApiKeyRoute({ apiKeyService, verifyToken });
+  const generateApiKeyRoute = initGenerateApiKeyRoute({ apiKeyService, authMiddleware });
   app.route("/", generateApiKeyRoute);
 
-  const listApiKeysRoute = initListApiKeysRoute({ apiKeyService, verifyToken });
+  const listApiKeysRoute = initListApiKeysRoute({ apiKeyService, authMiddleware });
   app.route("/", listApiKeysRoute);
 
-  const revokeApiKeyRoute = initRevokeApiKeyRoute({ apiKeyService, verifyToken });
+  const revokeApiKeyRoute = initRevokeApiKeyRoute({ apiKeyService, authMiddleware });
   app.route("/", revokeApiKeyRoute);
 
-  const deleteApiKeyRoute = initDeleteApiKeyRoute({ apiKeyService, verifyToken });
+  const deleteApiKeyRoute = initDeleteApiKeyRoute({ apiKeyService, authMiddleware });
   app.route("/", deleteApiKeyRoute);
 
   app.onError((err, c) => {

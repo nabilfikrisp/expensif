@@ -2,7 +2,7 @@ import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 
 import type { AuthService } from "@/modules/auth/service";
 import type { CookieJar } from "@/pkg/cookies";
-import { rateLimit } from "@/pkg/http/rate-limit-middleware";
+import type { RateLimitMiddleware } from "@/shared/rate-limit";
 import { errorRespSchema, tokenRespSchema } from "@/shared/response.schema";
 
 export const loginReqSchema = z
@@ -14,24 +14,28 @@ export const loginReqSchema = z
 
 export const loginRespSchema = tokenRespSchema;
 
-const loginRoute = createRoute({
-  method: "post",
-  path: "/login",
-  request: { body: { content: { "application/json": { schema: loginReqSchema } } } },
-  middleware: [rateLimit()],
-  responses: {
-    200: {
-      content: { "application/json": { schema: loginRespSchema } },
-      description: "Login success",
+export function initLoginRoute(
+  authService: AuthService,
+  cookieJar: CookieJar,
+  rateLimiter: RateLimitMiddleware
+) {
+  const loginRoute = createRoute({
+    method: "post",
+    path: "/login",
+    request: { body: { content: { "application/json": { schema: loginReqSchema } } } },
+    middleware: [rateLimiter],
+    responses: {
+      200: {
+        content: { "application/json": { schema: loginRespSchema } },
+        description: "Login success",
+      },
+      401: {
+        content: { "application/json": { schema: errorRespSchema } },
+        description: "Invalid credentials",
+      },
     },
-    401: {
-      content: { "application/json": { schema: errorRespSchema } },
-      description: "Invalid credentials",
-    },
-  },
-});
+  });
 
-export function initLoginRoute(authService: AuthService, cookieJar: CookieJar) {
   const app = new OpenAPIHono();
 
   app.openapi(loginRoute, async (c) => {

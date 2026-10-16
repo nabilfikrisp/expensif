@@ -2,7 +2,7 @@ import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 
 import type { AuthService } from "@/modules/auth/service";
 import type { CookieJar } from "@/pkg/cookies";
-import { rateLimit } from "@/pkg/http/rate-limit-middleware";
+import type { RateLimitMiddleware } from "@/shared/rate-limit";
 import { errorRespSchema, tokenRespSchema } from "@/shared/response.schema";
 
 export const registerReqSchema = z
@@ -15,28 +15,32 @@ export const registerReqSchema = z
 
 export const registerRespSchema = tokenRespSchema;
 
-const registerRoute = createRoute({
-  method: "post",
-  path: "/register",
-  request: { body: { content: { "application/json": { schema: registerReqSchema } } } },
-  middleware: [rateLimit()],
-  responses: {
-    201: {
-      content: { "application/json": { schema: registerRespSchema } },
-      description: "User registered",
+export function initRegisterRoute(
+  authService: AuthService,
+  cookieJar: CookieJar,
+  rateLimiter: RateLimitMiddleware
+) {
+  const registerRoute = createRoute({
+    method: "post",
+    path: "/register",
+    request: { body: { content: { "application/json": { schema: registerReqSchema } } } },
+    middleware: [rateLimiter],
+    responses: {
+      201: {
+        content: { "application/json": { schema: registerRespSchema } },
+        description: "User registered",
+      },
+      400: {
+        content: { "application/json": { schema: errorRespSchema } },
+        description: "Validation error",
+      },
+      409: {
+        content: { "application/json": { schema: errorRespSchema } },
+        description: "Email already registered",
+      },
     },
-    400: {
-      content: { "application/json": { schema: errorRespSchema } },
-      description: "Validation error",
-    },
-    409: {
-      content: { "application/json": { schema: errorRespSchema } },
-      description: "Email already registered",
-    },
-  },
-});
+  });
 
-export function initRegisterRoute(authService: AuthService, cookieJar: CookieJar) {
   const app = new OpenAPIHono();
 
   app.openapi(registerRoute, async (c) => {

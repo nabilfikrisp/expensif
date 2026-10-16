@@ -2,8 +2,11 @@ import "dotenv/config";
 import { z } from "zod";
 import process from "process";
 
+import { PROXY_KINDS } from "@/shared/proxy-ip";
+
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+  DEPLOY_PROXY: z.enum(PROXY_KINDS).default("none"),
   DATABASE_URL: z.string().min(1, "DATABASE_URL must not be empty"),
   PORT: z.coerce.number().int().positive().default(3000),
   TELEGRAM_BOT_TOKEN: z.string().min(1, "TELEGRAM_BOT_TOKEN must not be empty"),

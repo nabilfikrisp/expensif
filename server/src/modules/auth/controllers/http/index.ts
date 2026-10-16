@@ -7,23 +7,27 @@ import { initMeRoute } from "./me";
 import { initRefreshRoute } from "./refresh";
 import { initRegisterRoute } from "./register";
 
+import type { AuthMiddleware } from "@/modules/auth/controllers/middleware";
 import { AuthError } from "@/modules/auth/error";
 import type { AuthService } from "@/modules/auth/service";
 import { initCookieJar } from "@/pkg/cookies";
 import type { EnvSchema } from "@/pkg/env";
+import type { RateLimiters } from "@/shared/rate-limit";
 
-export function initAuthRoutes(env: EnvSchema, authService: AuthService) {
+export function initAuthRoutes(
+  env: EnvSchema,
+  authService: AuthService,
+  authMiddleware: AuthMiddleware,
+  rateLimiters: RateLimiters
+) {
   const app = new OpenAPIHono();
-
-  const accessSecret = authService.encodeSecret(env.JWT_SECRET);
-  const verifyToken = (token: string) => authService.verifyToken(token, accessSecret);
 
   const cookieJar = initCookieJar(env);
 
-  const registerRoute = initRegisterRoute(authService, cookieJar);
+  const registerRoute = initRegisterRoute(authService, cookieJar, rateLimiters.register);
   app.route("/", registerRoute);
 
-  const loginRoute = initLoginRoute(authService, cookieJar);
+  const loginRoute = initLoginRoute(authService, cookieJar, rateLimiters.login);
   app.route("/", loginRoute);
 
   const refreshRoute = initRefreshRoute(authService, cookieJar);
@@ -32,7 +36,7 @@ export function initAuthRoutes(env: EnvSchema, authService: AuthService) {
   const logoutRoute = initLogoutRoute(cookieJar);
   app.route("/", logoutRoute);
 
-  const meRoute = initMeRoute({ authService, verifyToken });
+  const meRoute = initMeRoute({ authService, authMiddleware });
   app.route("/", meRoute);
 
   app.onError((err, c) => {

@@ -5,7 +5,7 @@ import { AuthError } from "@/modules/auth/error";
 
 export type VerifyTokenFn = (token: string) => Promise<JWTPayload>;
 
-export function authMiddleware(
+export function initAuthMiddleware(
   verifyToken: VerifyTokenFn
 ): MiddlewareHandler<{ Variables: { userId: string } }> {
   return async (c, next) => {
@@ -25,3 +25,5 @@ export function authMiddleware(
     }
   };
 }
+
+export type AuthMiddleware = ReturnType<typeof initAuthMiddleware>;

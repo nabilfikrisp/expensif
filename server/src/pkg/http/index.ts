@@ -6,10 +6,10 @@ import { requestId } from "hono/request-id";
 import { secureHeaders } from "hono/secure-headers";
 
 import { initHTTPLoggerMiddleware } from "./logger-middleware";
-import { rateLimit } from "./rate-limit-middleware";
 
 import type { EnvSchema } from "@/pkg/env";
 import type { Logger } from "@/pkg/logger";
+import type { RateLimitMiddleware } from "@/shared/rate-limit";
 
 export const API_VERSION = "v1";
 export const API_PREFIX = `/api/${API_VERSION}`;
@@ -19,16 +19,11 @@ interface RouteModule {
   app: OpenAPIHono;
 }
 
-function useMiddleware(app: OpenAPIHono, logger: Logger) {
+function useMiddleware(app: OpenAPIHono, logger: Logger, defaultLimiter: RateLimitMiddleware) {
   app.use(secureHeaders());
   app.use(requestId());
   app.use(initHTTPLoggerMiddleware(logger));
-  app.use(
-    rateLimit({
-      limit: 1000,
-      minutes: 15,
-    })
-  );
+  app.use(defaultLimiter);
 }
 
 function useCors(app: OpenAPIHono) {
@@ -97,10 +92,15 @@ function useErrorHandler(app: OpenAPIHono, logger: Logger) {
   });
 }
 
-export function initHttp(env: EnvSchema, logger: Logger, routes: RouteModule[]) {
+export function initHttp(
+  env: EnvSchema,
+  logger: Logger,
+  routes: RouteModule[],
+  opts: { defaultLimiter: RateLimitMiddleware }
+) {
   const app = new OpenAPIHono();
 
-  useMiddleware(app, logger);
+  useMiddleware(app, logger, opts.defaultLimiter);
   useCors(app);
   useOpenAPI(app);
 
