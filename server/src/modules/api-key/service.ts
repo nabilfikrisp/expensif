@@ -47,7 +47,14 @@ export function initApiKeyService(env: EnvSchema, db: Db) {
         })
         .returning();
 
-      return { id, key, label: defaultLabel, createdAt: instered.createdAt, keyHint };
+      return {
+        id,
+        key,
+        label: defaultLabel,
+        createdAt: instered.createdAt,
+        expiresAt: instered.expiresAt,
+        keyHint,
+      };
     },
     /**
      * List API keys for a user with pagination and optional filtering.
@@ -85,6 +92,7 @@ export function initApiKeyService(env: EnvSchema, db: Db) {
           label: apiKeys.label,
           keyHint: apiKeys.keyHint,
           createdAt: apiKeys.createdAt,
+          expiresAt: apiKeys.expiresAt,
           lastUsedAt: apiKeys.lastUsedAt,
           revokedAt: apiKeys.revokedAt,
         })

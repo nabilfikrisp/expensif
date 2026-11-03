@@ -58,6 +58,7 @@ export function initGenerateApiKeyRoute(deps: GenerateApiKeyRouteDeps) {
           keyHint: result.keyHint,
           label: result.label,
           createdAt: result.createdAt,
+          expiresAt: result.expiresAt,
         },
       },
       201

@@ -56,6 +56,7 @@ export async function initTest() {
     OPENROUTER_API_KEY: "dummy",
     OPENROUTER_MODEL: "dummy",
     API_KEY_SECRET: "dummy",
+    API_KEY_REDEEM_WINDOW_MINUTES: 15,
   };
 
   const logger = initLogger(env);
