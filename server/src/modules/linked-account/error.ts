@@ -5,6 +5,10 @@ export class LinkedAccountError extends Error {
     return new LinkedAccountError("This account is already linked", 409, "ACCOUNT_ALREADY_LINKED");
   }
 
+  static keyInvalid() {
+    return new LinkedAccountError("Invalid API key", 401, "LINK_KEY_INVALID");
+  }
+
   static accountNotFound() {
     return new LinkedAccountError("Linked account not found", 404, "ACCOUNT_NOT_FOUND");
   }

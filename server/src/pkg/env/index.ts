@@ -16,6 +16,7 @@ const envSchema = z.object({
   ACCESS_TOKEN_EXPIRES_IN_MINUTES: z.string().optional().default("15m"),
   REFRESH_TOKEN_EXPIRES_IN_DAYS: z.string().optional().default("7d"),
   API_KEY_SECRET: z.string().min(32, "API_KEY_SECRET must be valid and not empty"),
+  API_KEY_REDEEM_WINDOW_MINUTES: z.coerce.number().int().positive().default(15),
 });
 
 export type EnvSchema = z.infer<typeof envSchema>;

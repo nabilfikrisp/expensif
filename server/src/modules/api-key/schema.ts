@@ -15,6 +15,7 @@ export const apiKeys = sqliteTable(
     createdAt: text("created_at")
       .notNull()
       .default(sql`CURRENT_TIMESTAMP`),
+    expiresAt: text("expires_at").notNull(),
     lastUsedAt: text("last_used_at"),
     revokedAt: text("revoked_at"),
   },

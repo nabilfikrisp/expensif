@@ -24,21 +24,29 @@ All timestamp columns use `CURRENT_TIMESTAMP` defaults. No app-level timestamp p
 | Method | Description |
 |--------|-------------|
 | `generateApiKey(userId, label?)` | Generate `ek_<32hex>`, HMAC-SHA256 hash, return plaintext + hint |
-| `listApiKeys(userId, filters?)` | Paginated, filterable by `label`, `status` |
-| `verifyApiKey(plainKey)` | Hash → match → check not revoked → update `last_used_at` |
+| `listApiKeys(userId, filters?)` | Paginated, filterable by `label`, `status` (active/revoked/all). Default `"active"`. Status derived from `revoked_at` |
+| `consumeApiKey(plainKey, tx)` | Atomic verify + burn in one UPDATE: hash, check not revoked/used/expired (via `expires_at > CURRENT_TIMESTAMP`), set `last_used_at`. Returns `userId` or throws `keyInvalid`. Single SQL statement inside transaction |
+| `burnApiKey(plainKey, tx)` | Mark key as used without validation. Used for group chat leak prevention - burns leaked key silently |
 | `revokeApiKey(userId, keyId)` | Soft revoke (set `revoked_at`) |
 | `deleteApiKey(userId, keyId)` | Hard delete |
 
-### Step 2: Linked Account Service ✅
+### Step 2: Linked Account Service + Use Case ✅
 
-`server/src/modules/linked-account/service.ts` — receives `db` only.
+`server/src/modules/linked-account/service.ts` — receives `db`.
 
 | Method | Description |
 |--------|-------------|
-| `linkAccount(userId, platform, platformUserId, username?)` | Insert, handles unique constraint → 409 |
-| `getLinkedAccount(platform, platformUserId)` | Find by `(platform, platform_user_id)`, 404 if not found |
+| `linkAccount(userId, platform, platformUserId, username?, tx)` | Insert, handles unique constraint → throws `accountAlreadyLinked` |
+| `getLinkedAccount(platform, platformUserId)` | Find by `(platform, platform_user_id)`, throws `accountNotFound` if missing |
 | `getUserByLinkedAccount(platform, platformUserId)` | Join with `users`, returns userId/name/email |
-| `unlinkAccount(userId, accountId)` | Delete, 404 if not found |
+| `unlinkAccount(userId, accountId)` | Delete, throws `accountNotFound` if missing |
+
+`server/src/modules/linked-account/use-case.ts` — orchestrates services.
+
+| Method | Description |
+|--------|-------------|
+| `redeemApiKey(token, platform, platformUserId, username?)` | Transaction wraps `consumeApiKey(token, tx)` + `linkAccount(...)` + `getUser(userId)`. Returns `{ userName, userEmail }`. Translates `ApiKeyError` → `LinkedAccountError.keyInvalid()` at transaction boundary |
+| `burnApiKey(token)` | Burns key without linking (group chat leak prevention). Calls `apiKeyService.burnApiKey(token, db)` |
 
 ### Step 3: Error Classes ✅
 
@@ -71,28 +79,54 @@ Double Submit Cookie pattern on refresh endpoint.
 
 ## Pending Steps
 
-### Step 6: Link Bot Command
+### Step 6: Link Bot Command ✅
 
-`server/src/modules/user/controllers/bot/link.ts`
+`server/src/modules/linked-account/controllers/bot.ts`
 
-`/link <key>` flow:
-1. Empty key → usage instructions
-2. `verifyApiKey(key)` → null → "Invalid or already used"
-3. `getLinkedAccount("telegram", userId)` → exists → "Already linked"
-4. `linkAccount(userId, "telegram", userId, username)`
-5. Reply "Linked to {name} ({email})"
+Handler registers `/link <key>` command. Empty key → usage instructions. Group chat detection → burns key + shows "API key has been disabled" message (prevents group leak). Otherwise calls `linkedAccountUseCase.redeemApiKey(key, "telegram", userId, username)` and maps the result/errors to bot replies.
 
-### Step 7: Wire Into Bot
+**Use case orchestrates (inside transaction):**
+1. `consumeApiKey(token, tx)` — atomic UPDATE verify + burn
+2. `linkAccount(...)` — INSERT `linked_accounts`, unique constraint prevents double-link
+3. `getUser(userId, tx)` — fetch name + email
+4. Transaction rolls back consume if insert fails (token survives)
 
-Modify `server/src/pkg/bot/telegram/index.ts` — accept `apiKeyService` + `linkedAccountService`.
+**Handler replies:**
+- Success → "Linked to {name} ({email})"
+- `LinkedAccountError.keyInvalid()` → "Invalid, expired, or already-used key"
+- `LinkedAccountError.accountAlreadyLinked()` → "This Telegram account is already linked"
+- Generic error → "Couldn't link right now. Please try again later." (log but don't echo)
 
-### Step 8: Wire Into Main Entry
+### Step 7: Linked Account HTTP Routes
 
-Modify `server/src/index.ts` — init services, add `{ prefix: "api-key", app: apiKeyRoutes }`.
+`server/src/modules/linked-account/controllers/http/`
 
-### Step 9: Tests
+| File | Method | Path | Description |
+|------|--------|------|-------------|
+| `list.ts` | GET | `/linked-accounts` | List user's linked accounts (id, platform, platformUsername, linkedAt) |
+| `delete.ts` | DELETE | `/linked-accounts/:id` | Unlink account (calls existing `unlinkAccount` service method) |
 
-`server/src/test/api-key.test.ts` — generate, verify (valid/invalid/revoked), list, revoke.
+Required for visibility + remediation: user sees which accounts are linked and can remove a stolen-token link.
+
+### Step 8: Wire Into Bot
+
+Modify `server/src/pkg/bot/telegram/index.ts` — accept `linkedAccountService`, register link command.
+
+### Step 9: Wire Into Main Entry
+
+Modify `server/src/index.ts`:
+- Pass services into bot
+- Add `{ prefix: "api-key", app: apiKeyRoutes }`
+- Add `{ prefix: "linked-account", app: linkedAccountRoutes }`
+
+### Step 10: Tests
+
+`server/src/test/link.test.ts` — full redeem flow:
+- Valid token links successfully
+- **Concurrent redeem** (same token, two Telegram IDs) → exactly one wins
+- Garbage token, revoked token, expired token (backdate `created_at`) → all rejected
+- Already-linked account with fresh token → warning, token still active
+- `GET /linked-accounts`, `DELETE /linked-accounts/:id`
 
 ---
 
@@ -101,8 +135,12 @@ Modify `server/src/index.ts` — init services, add `{ prefix: "api-key", app: a
 1. **HMAC-SHA256** for API keys (deterministic, unlike bcrypt)
 2. **`ek_` prefix** with `ek_****<last-4>` hint (like GitHub/Stripe)
 3. **Separate modules** (`api-key/`, `linked-account/`) not under `user/`
-4. **User must exist first** — bot only verifies and links
-5. **Unique constraint** — `(platform, platform_user_id)` prevents double-linking
-6. **Manual revoke only** — no key expiration
+4. **User must exist first** — bot only verifies and links (dashboard login is mandatory first step)
+5. **Unique constraint** — `(platform, platform_user_id)` prevents double-linking per platform
+6. **15-minute TTL, single use** — token expires 15 min after generation (stored as `expires_at` column set at issue time via `datetime(CURRENT_TIMESTAMP, '+N minutes')`), burned on first successful redeem. Matches RFC 8628 device grant semantics (1800s default, single use, hashed at rest). Manual revoke still available via `revokeApiKey`. TTL configurable via `API_KEY_REDEEM_WINDOW_MINUTES` env var
 7. **CSRF via Double Submit Cookie** — stateless, no DB storage
 8. **DB-generated timestamps** — prevent clock drift
+9. **Atomic consume in transaction** — `consumeApiKey` does verify + burn in one UPDATE inside `db.transaction`, preventing double-link race. Transaction rollback restores token if link fails
+10. **Derived status** — `active`/`revoked`/`all` computed at read time from `revoked_at`. No scheduler, no drift
+11. **Unique constraint enforces single link per platform account** — `(platform, platform_user_id)` prevents one Telegram ID from linking twice. Burn prevents one token from linking multiple accounts
+12. **Group chat leak prevention** — Bot detects group chat, burns key via `burnApiKey` without validation, shows "API key has been disabled" message. Defense in depth: key dead before 15-min TTL expires

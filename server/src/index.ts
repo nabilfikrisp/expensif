@@ -5,6 +5,8 @@ import { initAuthMiddleware } from "@/modules/auth/controllers/middleware";
 import { initAuthService } from "@/modules/auth/service";
 import { initExpenseService } from "@/modules/expense/service";
 import { initLinkedAccountService } from "@/modules/linked-account/service";
+import { initLinkedAccountUseCase } from "@/modules/linked-account/use-case";
+import { initUserService } from "@/modules/user/service";
 import { initBot, startBot } from "@/pkg/bot/telegram";
 import { initDb } from "@/pkg/db";
 import { initEnv } from "@/pkg/env";
@@ -28,8 +30,15 @@ const rateLimiters = initRateLimiters(env.DEPLOY_PROXY);
 
 const authRoutes = initAuthRoutes(env, authService, authMiddleware, rateLimiters);
 
+const userService = initUserService(db);
 const linkedAccountService = initLinkedAccountService(db);
 const apiKeyService = initApiKeyService(env, db);
+const linkedAccountUseCase = initLinkedAccountUseCase({
+  db,
+  apiKeyService,
+  linkedAccountService,
+  userService,
+});
 const apiKeyRoutes = initApiKeyRoutes(apiKeyService, authMiddleware);
 
 const app = initHttp(
@@ -41,7 +50,12 @@ const app = initHttp(
   ],
   { defaultLimiter: rateLimiters.default }
 );
-const bot = initBot(env.TELEGRAM_BOT_TOKEN, logger, expenseService);
+const bot = initBot({
+  logger,
+  expenseService,
+  linkedAccountUseCase,
+  token: env.TELEGRAM_BOT_TOKEN,
+});
 
 const httpServer = startHttp(app, logger, env.PORT);
 startBot(bot, logger);

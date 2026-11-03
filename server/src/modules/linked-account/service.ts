@@ -3,29 +3,31 @@ import { and, eq } from "drizzle-orm";
 import { LinkedAccountError } from "@/modules/linked-account/error";
 import { linkedAccounts } from "@/modules/linked-account/schema";
 import { users } from "@/modules/user/schema";
-import type { Db } from "@/pkg/db";
+import type { Db, DbTx } from "@/pkg/db";
 import { isUniqueConstraintError } from "@/pkg/db/error";
+
+export interface LinkAccount {
+  userId: string;
+  platform: string;
+  platformUserId: string;
+  platformUsername?: string;
+  tx?: DbTx;
+}
 
 export function initLinkedAccountService(db: Db) {
   return {
-    async linkAccount(
-      userId: string,
-      platform: string,
-      platformUserId: string,
-      platformUsername?: string
-    ) {
+    async linkAccount({ tx = db, ...params }: LinkAccount) {
       const id = crypto.randomUUID();
-      const defaultPlatformUsername = platformUsername ?? null;
 
       try {
-        const [row] = await db
+        const [row] = await tx
           .insert(linkedAccounts)
           .values({
             id,
-            userId,
-            platform,
-            platformUserId,
-            platformUsername: defaultPlatformUsername,
+            userId: params.userId,
+            platform: params.platform,
+            platformUserId: params.platformUserId,
+            platformUsername: params.platformUsername ?? null,
           })
           .returning();
 
@@ -99,3 +101,5 @@ export function initLinkedAccountService(db: Db) {
     },
   };
 }
+
+export type LinkedAccountService = ReturnType<typeof initLinkedAccountService>;

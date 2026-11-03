@@ -10,3 +10,5 @@ export function initDb(databaseUrl: string) {
 
 export type Db = ReturnType<typeof initDb>["db"];
 export type DbClient = ReturnType<typeof initDb>["client"];
+export type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
+export type DbTx = Db | Tx;

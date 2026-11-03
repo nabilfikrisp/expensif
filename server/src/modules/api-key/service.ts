@@ -4,7 +4,7 @@ import { createHmac } from "node:crypto";
 
 import { ApiKeyError } from "@/modules/api-key/error";
 import { apiKeys } from "@/modules/api-key/schema";
-import type { Db } from "@/pkg/db";
+import type { Db, DbTx } from "@/pkg/db";
 import type { EnvSchema } from "@/pkg/env";
 
 export const listApiKeysQuerySchema = z
@@ -33,10 +33,18 @@ export function initApiKeyService(env: EnvSchema, db: Db) {
       const key = `${KEY_PREFIX}${rawKey}`;
       const keyHint = `${KEY_PREFIX}****${rawKey.slice(-4)}`;
       const keyHash = hashApiKey(env, key);
+      const expireModifier = `+${env.API_KEY_REDEEM_WINDOW_MINUTES} minutes`;
 
       const [instered] = await db
         .insert(apiKeys)
-        .values({ id, userId, keyHash, label: defaultLabel, keyHint })
+        .values({
+          id,
+          userId,
+          keyHash,
+          label: defaultLabel,
+          keyHint,
+          expiresAt: sql`datetime(CURRENT_TIMESTAMP, ${expireModifier})`,
+        })
         .returning();
 
       return { id, key, label: defaultLabel, createdAt: instered.createdAt, keyHint };
@@ -105,21 +113,42 @@ export function initApiKeyService(env: EnvSchema, db: Db) {
       };
     },
     /**
-     * Used by the Telegram bot `/link` command to validate an API key.
+     * Atomically verify and consume an API key (single-use enforcement).
      *
-     * Hashes the plain key, matches it in DB, and updates `last_used_at`.
-     * Returns the full key row if valid and not revoked, or `undefined`.
+     * Validates key hash, checks not revoked/used/expired (15-min TTL), marks as used.
+     * Throws ApiKeyError.keyInvalid() if validation fails.
+     * Must be called within a transaction for rollback support, `tx` is required
+     * so a caller can't accidentally burn a key outside one.
      */
-    async verifyApiKey(plainKey: string) {
+    async consumeApiKey(plainKey: string, tx: DbTx) {
       const keyHash = hashApiKey(env, plainKey);
 
-      const [updated] = await db
+      const result = await tx
         .update(apiKeys)
         .set({ lastUsedAt: sql`(CURRENT_TIMESTAMP)` })
-        .where(and(eq(apiKeys.keyHash, keyHash), isNull(apiKeys.revokedAt)))
-        .returning();
+        .where(
+          and(
+            eq(apiKeys.keyHash, keyHash),
+            isNull(apiKeys.revokedAt),
+            isNull(apiKeys.lastUsedAt),
+            sql`${apiKeys.expiresAt} > CURRENT_TIMESTAMP`
+          )
+        )
+        .returning({ userId: apiKeys.userId });
 
-      return updated;
+      if (result.length === 0) {
+        throw ApiKeyError.keyInvalid();
+      }
+
+      return { userId: result[0].userId };
+    },
+    async burnApiKey(plainKey: string, tx: DbTx) {
+      const keyHash = hashApiKey(env, plainKey);
+      await tx
+        .update(apiKeys)
+        .set({ lastUsedAt: sql`(CURRENT_TIMESTAMP)` })
+        .where(and(eq(apiKeys.keyHash, keyHash), isNull(apiKeys.lastUsedAt)))
+        .run();
     },
     async revokeApiKey(userId: string, keyId: string) {
       const result = await db
