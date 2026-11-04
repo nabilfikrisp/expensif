@@ -23,15 +23,15 @@ const logger = initLogger(env);
 const llm = initLlm(env.OPENROUTER_API_KEY, env.OPENROUTER_MODEL);
 const expenseService = initExpenseService(llm, db);
 const authService = initAuthService(env, db);
+const userService = initUserService(db);
 
 const accessSecret = authService.encodeSecret(env.JWT_SECRET);
 const authMiddleware = initAuthMiddleware((t) => authService.verifyToken(t, accessSecret));
 
 const rateLimiters = initRateLimiters(env.DEPLOY_PROXY);
 
-const authRoutes = initAuthRoutes(env, authService, authMiddleware, rateLimiters);
+const authRoutes = initAuthRoutes({ env, authService, userService, authMiddleware, rateLimiters });
 
-const userService = initUserService(db);
 const linkedAccountService = initLinkedAccountService(db);
 const apiKeyService = initApiKeyService(env, db);
 const linkedAccountUseCase = initLinkedAccountUseCase({

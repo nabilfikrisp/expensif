@@ -113,19 +113,6 @@ export function initAuthService(env: EnvSchema, db: Db) {
 
       return { accessToken, refreshToken: newRefreshToken, csrfToken };
     },
-    async getUser(userId: string) {
-      const user = await db.select().from(users).where(eq(users.id, userId)).get();
-
-      if (!user) {
-        throw AuthError.userNotFound();
-      }
-
-      return {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-      };
-    },
   };
 }
 

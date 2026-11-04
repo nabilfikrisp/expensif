@@ -1,5 +1,5 @@
+import { z } from "@hono/zod-openapi";
 import { and, count, eq, isNotNull, isNull, like, sql } from "drizzle-orm";
-import { z } from "zod";
 import { createHmac } from "node:crypto";
 
 import { ApiKeyError } from "@/modules/api-key/error";
@@ -35,7 +35,7 @@ export function initApiKeyService(env: EnvSchema, db: Db) {
       const keyHash = hashApiKey(env, key);
       const expireModifier = `+${env.API_KEY_REDEEM_WINDOW_MINUTES} minutes`;
 
-      const [instered] = await db
+      const [inserted] = await db
         .insert(apiKeys)
         .values({
           id,
@@ -51,8 +51,8 @@ export function initApiKeyService(env: EnvSchema, db: Db) {
         id,
         key,
         label: defaultLabel,
-        createdAt: instered.createdAt,
-        expiresAt: instered.expiresAt,
+        createdAt: inserted.createdAt,
+        expiresAt: inserted.expiresAt,
         keyHint,
       };
     },

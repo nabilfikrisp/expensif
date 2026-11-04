@@ -10,16 +10,25 @@ import { initRegisterRoute } from "./register";
 import type { AuthMiddleware } from "@/modules/auth/controllers/middleware";
 import { AuthError } from "@/modules/auth/error";
 import type { AuthService } from "@/modules/auth/service";
+import type { UserService } from "@/modules/user/service";
 import { initCookieJar } from "@/pkg/cookies";
 import type { EnvSchema } from "@/pkg/env";
 import type { RateLimiters } from "@/shared/rate-limit";
 
-export function initAuthRoutes(
-  env: EnvSchema,
-  authService: AuthService,
-  authMiddleware: AuthMiddleware,
-  rateLimiters: RateLimiters
-) {
+export interface InitAuthRoutesDeps {
+  env: EnvSchema;
+  authService: AuthService;
+  userService: UserService;
+  authMiddleware: AuthMiddleware;
+  rateLimiters: RateLimiters;
+}
+export function initAuthRoutes({
+  env,
+  authService,
+  userService,
+  authMiddleware,
+  rateLimiters,
+}: InitAuthRoutesDeps) {
   const app = new OpenAPIHono();
 
   const cookieJar = initCookieJar(env);
@@ -36,7 +45,7 @@ export function initAuthRoutes(
   const logoutRoute = initLogoutRoute(cookieJar);
   app.route("/", logoutRoute);
 
-  const meRoute = initMeRoute({ authService, authMiddleware });
+  const meRoute = initMeRoute({ userService, authMiddleware });
   app.route("/", meRoute);
 
   app.onError((err, c) => {

@@ -1,7 +1,7 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 
 import type { AuthMiddleware } from "@/modules/auth/controllers/middleware";
-import type { AuthService } from "@/modules/auth/service";
+import type { UserService } from "@/modules/user/service";
 import { userRespSchema } from "@/modules/user/zod-schema";
 import { errorRespSchema, successRespSchema } from "@/shared/response.schema";
 
@@ -12,7 +12,7 @@ export const meRespSchema = successRespSchema
   .openapi("MeResponse");
 
 interface MeRouteDeps {
-  authService: AuthService;
+  userService: UserService;
   authMiddleware: AuthMiddleware;
 }
 export function initMeRoute(deps: MeRouteDeps) {
@@ -37,7 +37,7 @@ export function initMeRoute(deps: MeRouteDeps) {
 
   app.openapi(meRoute, async (c) => {
     const userId = c.get("userId");
-    const user = await deps.authService.getUser(userId);
+    const user = await deps.userService.getUser(userId);
     return c.json({ success: true, message: "get user success", data: { user } }, 200);
   });
 
