@@ -81,7 +81,7 @@ Double Submit Cookie pattern on refresh endpoint.
 
 ### Step 6: Link Bot Command ✅
 
-`server/src/modules/linked-account/controllers/bot.ts`
+`server/src/modules/linked-account/controllers/bot.ts` — implemented and wired into `server/src/pkg/bot/telegram/index.ts`.
 
 Handler registers `/link <key>` command. Empty key → usage instructions. Group chat detection → burns key + shows "API key has been disabled" message (prevents group leak). Otherwise calls `linkedAccountUseCase.redeemApiKey(key, "telegram", userId, username)` and maps the result/errors to bot replies.
 
@@ -97,7 +97,11 @@ Handler registers `/link <key>` command. Empty key → usage instructions. Group
 - `LinkedAccountError.accountAlreadyLinked()` → "This Telegram account is already linked"
 - Generic error → "Couldn't link right now. Please try again later." (log but don't echo)
 
-### Step 7: Linked Account HTTP Routes
+### Step 7: Wire API Key Routes ✅
+
+`server/src/index.ts` — api-key routes mounted at `/api-key` prefix. Auth middleware applied to all endpoints.
+
+### Step 8: Linked Account HTTP Routes
 
 `server/src/modules/linked-account/controllers/http/`
 
@@ -108,16 +112,9 @@ Handler registers `/link <key>` command. Empty key → usage instructions. Group
 
 Required for visibility + remediation: user sees which accounts are linked and can remove a stolen-token link.
 
-### Step 8: Wire Into Bot
+### Step 9: Wire Linked Account Routes
 
-Modify `server/src/pkg/bot/telegram/index.ts` — accept `linkedAccountService`, register link command.
-
-### Step 9: Wire Into Main Entry
-
-Modify `server/src/index.ts`:
-- Pass services into bot
-- Add `{ prefix: "api-key", app: apiKeyRoutes }`
-- Add `{ prefix: "linked-account", app: linkedAccountRoutes }`
+Add `{ prefix: "linked-account", app: linkedAccountRoutes }` to `server/src/index.ts`.
 
 ### Step 10: Tests
 

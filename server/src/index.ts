@@ -4,6 +4,7 @@ import { initAuthRoutes } from "@/modules/auth/controllers/http";
 import { initAuthMiddleware } from "@/modules/auth/controllers/middleware";
 import { initAuthService } from "@/modules/auth/service";
 import { initExpenseService } from "@/modules/expense/service";
+import { initLinkedAccountRoutes } from "@/modules/linked-account/controllers/http";
 import { initLinkedAccountService } from "@/modules/linked-account/service";
 import { initLinkedAccountUseCase } from "@/modules/linked-account/use-case";
 import { initUserService } from "@/modules/user/service";
@@ -40,6 +41,7 @@ const linkedAccountUseCase = initLinkedAccountUseCase({
   userService,
 });
 const apiKeyRoutes = initApiKeyRoutes(apiKeyService, authMiddleware);
+const linkedAccountRoutes = initLinkedAccountRoutes(linkedAccountService, authMiddleware);
 
 const app = initHttp(
   env,
@@ -47,6 +49,7 @@ const app = initHttp(
   [
     { prefix: "auth", app: authRoutes },
     { prefix: "api-key", app: apiKeyRoutes },
+    { prefix: "linked-account", app: linkedAccountRoutes },
   ],
   { defaultLimiter: rateLimiters.default }
 );

@@ -89,6 +89,20 @@ export function initLinkedAccountService(db: Db) {
       };
     },
 
+    async listLinkedAccounts(userId: string) {
+      return db
+        .select({
+          id: linkedAccounts.id,
+          platform: linkedAccounts.platform,
+          platformUserId: linkedAccounts.platformUserId,
+          platformUsername: linkedAccounts.platformUsername,
+          linkedAt: linkedAccounts.linkedAt,
+        })
+        .from(linkedAccounts)
+        .where(eq(linkedAccounts.userId, userId))
+        .all();
+    },
+
     async unlinkAccount(userId: string, accountId: string) {
       const result = await db
         .delete(linkedAccounts)
