@@ -101,20 +101,21 @@ Handler registers `/link <key>` command. Empty key → usage instructions. Group
 
 `server/src/index.ts` — api-key routes mounted at `/api-key` prefix. Auth middleware applied to all endpoints.
 
-### Step 8: Linked Account HTTP Routes
+### Step 8: Linked Account HTTP Routes ✅
 
-`server/src/modules/linked-account/controllers/http/`
+`server/src/modules/linked-account/controllers/http/` — implemented.
 
 | File | Method | Path | Description |
 |------|--------|------|-------------|
-| `list.ts` | GET | `/linked-accounts` | List user's linked accounts (id, platform, platformUsername, linkedAt) |
-| `delete.ts` | DELETE | `/linked-accounts/:id` | Unlink account (calls existing `unlinkAccount` service method) |
+| `list.ts` | GET | `/linked-account` | List user's linked accounts (id, platform, platformUsername, linkedAt) |
+| `delete.ts` | DELETE | `/linked-account/:id` | Unlink account (calls `unlinkAccount` service method) |
+| `index.ts` | - | - | Aggregates routes, error handler for `LinkedAccountError` |
 
-Required for visibility + remediation: user sees which accounts are linked and can remove a stolen-token link.
+Added `listLinkedAccounts(userId)` service method. Zod schema uses `createSelectSchema` from drizzle-orm, omits `userId` in response.
 
-### Step 9: Wire Linked Account Routes
+### Step 9: Wire Linked Account Routes ✅
 
-Add `{ prefix: "linked-account", app: linkedAccountRoutes }` to `server/src/index.ts`.
+`server/src/index.ts` — linked-account routes mounted at `/linked-account` prefix. Auth middleware applied to all endpoints.
 
 ### Step 10: Tests
 
