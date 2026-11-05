@@ -1,29 +1,29 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { initTest } from "../helper";
 
 import { registerRespSchema } from "@/modules/auth/controllers/http/register";
 import { AuthError } from "@/modules/auth/error";
-import type { DbClient } from "@/pkg/db";
 import { API_PREFIX } from "@/pkg/http";
 import { errorRespSchema } from "@/shared/response.schema";
 
 let app: OpenAPIHono;
-let dbClient: DbClient | undefined;
+let resetDb: () => Promise<void>;
 
-beforeEach(async () => {
-  dbClient = undefined;
-  const testCtx = await initTest();
-  app = testCtx.app;
-  dbClient = testCtx.client;
+beforeAll(async () => {
+  const ctx = await initTest();
+  app = ctx.app;
+  resetDb = ctx.resetDb;
+  return () => ctx.client.end();
 });
 
-afterEach(async () => {
-  if (dbClient) {
-    await dbClient.end();
-    dbClient = undefined;
-  }
+beforeEach(async () => {
+  await resetDb();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe(`POST ${API_PREFIX}/auth/register`, () => {

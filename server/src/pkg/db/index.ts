@@ -1,12 +1,17 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
+import type { PoolConfig } from "pg";
 
 import { relations } from "./relations";
 
-export function initDb(databaseUrl: string) {
+export function initDb(
+  databaseUrl: string,
+  options: Pick<PoolConfig, "connectionTimeoutMillis"> = {}
+) {
   const client = new Pool({
     connectionString: databaseUrl,
-    max: 5,
+    max: 10,
+    ...options,
   });
 
   const db = drizzle({ client, relations });

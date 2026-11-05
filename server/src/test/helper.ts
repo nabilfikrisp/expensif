@@ -14,10 +14,10 @@ import { API_PREFIX, initHttp } from "@/pkg/http";
 import { initLogger } from "@/pkg/logger";
 import { initRateLimiters } from "@/shared/rate-limit";
 
-export const TEST_DATABASE_URL =
+const TEST_DATABASE_URL =
   "postgres://expensif_test:local_test_password@127.0.0.1:5433/expensif_test";
 
-export async function assertTestDatabase(client?: DbClient) {
+async function assertTestDatabase(client: DbClient) {
   const url = new URL(TEST_DATABASE_URL);
   if (
     url.protocol !== "postgres:" ||
@@ -30,14 +30,47 @@ export async function assertTestDatabase(client?: DbClient) {
     throw new Error("Refusing to use an unexpected test database URL");
   }
 
-  if (client) {
-    const result = await client.query<{ database: string; role: string }>(
-      "SELECT current_database() AS database, current_user AS role"
+  const result = await client.query<{ database: string; role: string }>(
+    "SELECT current_database() AS database, current_user AS role"
+  );
+  const identity = result.rows.at(0);
+  if (identity?.database !== "expensif_test" || identity.role !== "expensif_test") {
+    throw new Error("Refusing to use a database or role other than expensif_test");
+  }
+}
+
+export async function initTestDb() {
+  const database = initDb(TEST_DATABASE_URL, { connectionTimeoutMillis: 5000 });
+  const { client } = database;
+
+  try {
+    await client.query("SELECT 1");
+  } catch (error) {
+    await client.end();
+    throw new Error(
+      [
+        "Cannot connect to the configured PostgreSQL test database.",
+        "Stop the development database and start the test database from the repository root:",
+        "  docker compose -f docker/compose.yml down",
+        "  docker compose -f docker/compose.test.yml up -d --wait",
+      ].join("\n"),
+      { cause: error }
     );
-    const identity = result.rows.at(0);
-    if (identity?.database !== "expensif_test" || identity.role !== "expensif_test") {
-      throw new Error("Refusing to use a database or role other than expensif_test");
-    }
+  }
+
+  try {
+    await assertTestDatabase(client);
+    return {
+      ...database,
+      resetDb: async () => {
+        await client.query(
+          "TRUNCATE TABLE public.users, public.categories, public.messages, public.expenses, public.linked_accounts, public.api_keys"
+        );
+      },
+    };
+  } catch (error) {
+    await client.end();
+    throw error;
   }
 }
 
@@ -109,28 +142,19 @@ function buildApp(env: EnvSchema, db: Db) {
 }
 
 export async function initTest() {
-  await assertTestDatabase();
-  const { db, client } = initDb(TEST_DATABASE_URL);
+  const database = await initTestDb();
   try {
-    await assertTestDatabase(client);
-    await client.query(
-      "TRUNCATE TABLE public.users, public.categories, public.messages, public.expenses, public.linked_accounts, public.api_keys"
-    );
     const env = buildEnv();
-    return { db, client, env, ...buildApp(env, db) };
+    const app = buildApp(env, database.db);
+    return { ...database, env, ...app };
   } catch (error) {
     try {
-      await client.end();
+      await database.client.end();
     } catch (cleanupError) {
       throw new AggregateError([error, cleanupError], "Test setup and pool cleanup failed");
     }
     throw error;
   }
-}
-
-export async function initUseCaseTest() {
-  const ctx = await initTest();
-  return { ...ctx, cleanup: () => ctx.client.end() };
 }
 
 export async function registerAndGetToken(

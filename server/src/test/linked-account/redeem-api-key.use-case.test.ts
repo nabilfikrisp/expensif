@@ -1,20 +1,13 @@
 import { eq, sql } from "drizzle-orm";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { initUseCaseTest } from "../helper";
+import { initTest } from "../helper";
 
 import { ApiKeyError } from "@/modules/api-key/error";
 import { apiKeys } from "@/modules/api-key/schema";
 import { LinkedAccountError } from "@/modules/linked-account/error";
 
-let ctx: Awaited<ReturnType<typeof initUseCaseTest>> | undefined;
-
-function getContext() {
-  if (!ctx) {
-    throw new Error("Test context has not been initialized");
-  }
-  return ctx;
-}
+let ctx: Awaited<ReturnType<typeof initTest>>;
 let userId: string;
 
 const mockUser = { email: "test@example.com", password: "pass123", name: "Test User" };
@@ -26,31 +19,32 @@ const platformArgs = {
 const keyInvalidMessage = () => LinkedAccountError.keyInvalid().message;
 
 async function issueKey() {
-  return await getContext().services.apiKey.generateApiKey(userId, "telegram");
+  return await ctx.services.apiKey.generateApiKey(userId, "telegram");
 }
 
+beforeAll(async () => {
+  ctx = await initTest();
+  return () => ctx.client.end();
+});
+
 beforeEach(async () => {
-  ctx = undefined;
-  ctx = await initUseCaseTest();
+  await ctx.resetDb();
 
-  await getContext().services.auth.register(mockUser.email, mockUser.password, mockUser.name);
+  await ctx.services.auth.register(mockUser.email, mockUser.password, mockUser.name);
 
-  const user = await getContext().services.user.getUserByEmail(mockUser.email);
+  const user = await ctx.services.user.getUserByEmail(mockUser.email);
   userId = user.id;
 });
 
-afterEach(async () => {
+afterEach(() => {
   vi.restoreAllMocks();
-  const current = ctx;
-  ctx = undefined;
-  await current?.cleanup();
 });
 
 describe("LinkedAccountUseCase.redeemApiKey", () => {
   it("redeems a valid key and returns the owner's name and email", async () => {
     const { key: token } = await issueKey();
 
-    const result = await getContext().useCases.linkedAccount.redeemApiKey({
+    const result = await ctx.useCases.linkedAccount.redeemApiKey({
       token,
       ...platformArgs,
     });
@@ -60,14 +54,14 @@ describe("LinkedAccountUseCase.redeemApiKey", () => {
 
   it("links the account to the key's owner with the given platform data", async () => {
     const { key: token } = await issueKey();
-    const linkSpy = vi.spyOn(getContext().services.linkedAccount, "linkAccount");
+    const linkSpy = vi.spyOn(ctx.services.linkedAccount, "linkAccount");
 
-    await getContext().useCases.linkedAccount.redeemApiKey({ token, ...platformArgs });
+    await ctx.useCases.linkedAccount.redeemApiKey({ token, ...platformArgs });
 
     expect(linkSpy).toHaveBeenCalledTimes(1);
     expect(linkSpy).toHaveBeenCalledWith(expect.objectContaining({ userId, ...platformArgs }));
 
-    const linked = await getContext().services.linkedAccount.getLinkedAccount(
+    const linked = await ctx.services.linkedAccount.getLinkedAccount(
       platformArgs.platform,
       platformArgs.platformUserId
     );
@@ -78,7 +72,7 @@ describe("LinkedAccountUseCase.redeemApiKey", () => {
   it("works without platformUsername", async () => {
     const { key: token } = await issueKey();
 
-    const result = await getContext().useCases.linkedAccount.redeemApiKey({
+    const result = await ctx.useCases.linkedAccount.redeemApiKey({
       token,
       platform: platformArgs.platform,
       platformUserId: platformArgs.platformUserId,
@@ -89,11 +83,11 @@ describe("LinkedAccountUseCase.redeemApiKey", () => {
 
   it("passes the same transaction to every service call", async () => {
     const { key: token } = await issueKey();
-    const consumeSpy = vi.spyOn(getContext().services.apiKey, "consumeApiKey");
-    const linkSpy = vi.spyOn(getContext().services.linkedAccount, "linkAccount");
-    const getUserSpy = vi.spyOn(getContext().services.user, "getUser");
+    const consumeSpy = vi.spyOn(ctx.services.apiKey, "consumeApiKey");
+    const linkSpy = vi.spyOn(ctx.services.linkedAccount, "linkAccount");
+    const getUserSpy = vi.spyOn(ctx.services.user, "getUser");
 
-    await getContext().useCases.linkedAccount.redeemApiKey({ token, ...platformArgs });
+    await ctx.useCases.linkedAccount.redeemApiKey({ token, ...platformArgs });
 
     const consumeTx = consumeSpy.mock.calls[0][1];
     const linkTx = linkSpy.mock.calls[0][0].tx;
@@ -101,15 +95,15 @@ describe("LinkedAccountUseCase.redeemApiKey", () => {
 
     expect(linkTx).toBe(consumeTx);
     expect(getUserTx).toBe(consumeTx);
-    expect(consumeTx).not.toBe(getContext().db);
+    expect(consumeTx).not.toBe(ctx.db);
   });
 
   describe("invalid keys", () => {
     it("rejects an unknown token with keyInvalid and links nothing", async () => {
-      const linkSpy = vi.spyOn(getContext().services.linkedAccount, "linkAccount");
+      const linkSpy = vi.spyOn(ctx.services.linkedAccount, "linkAccount");
 
       await expect(
-        getContext().useCases.linkedAccount.redeemApiKey({ token: "ek_unknown", ...platformArgs })
+        ctx.useCases.linkedAccount.redeemApiKey({ token: "ek_unknown", ...platformArgs })
       ).rejects.toMatchObject({ message: keyInvalidMessage() });
 
       expect(linkSpy).not.toHaveBeenCalled();
@@ -117,10 +111,10 @@ describe("LinkedAccountUseCase.redeemApiKey", () => {
 
     it("rejects a token that was already redeemed", async () => {
       const { key: token } = await issueKey();
-      await getContext().useCases.linkedAccount.redeemApiKey({ token, ...platformArgs });
+      await ctx.useCases.linkedAccount.redeemApiKey({ token, ...platformArgs });
 
       await expect(
-        getContext().useCases.linkedAccount.redeemApiKey({
+        ctx.useCases.linkedAccount.redeemApiKey({
           token,
           ...platformArgs,
           platformUserId: "tg-456",
@@ -130,10 +124,10 @@ describe("LinkedAccountUseCase.redeemApiKey", () => {
 
     it("rejects a revoked key", async () => {
       const { id, key: token } = await issueKey();
-      await getContext().services.apiKey.revokeApiKey(userId, id);
+      await ctx.services.apiKey.revokeApiKey(userId, id);
 
       await expect(
-        getContext().useCases.linkedAccount.redeemApiKey({ token, ...platformArgs })
+        ctx.useCases.linkedAccount.redeemApiKey({ token, ...platformArgs })
       ).rejects.toMatchObject({ message: keyInvalidMessage() });
     });
 
@@ -141,20 +135,20 @@ describe("LinkedAccountUseCase.redeemApiKey", () => {
       const { id, key: token } = await issueKey();
 
       // Expiry uses database time, so move expiresAt into the past instead of mocking JS time.
-      await getContext()
-        .db.update(apiKeys)
+      await ctx.db
+        .update(apiKeys)
         .set({ expiresAt: sql`clock_timestamp() - interval '1 minute'` })
         .where(eq(apiKeys.id, id));
 
       await expect(
-        getContext().useCases.linkedAccount.redeemApiKey({ token, ...platformArgs })
+        ctx.useCases.linkedAccount.redeemApiKey({ token, ...platformArgs })
       ).rejects.toMatchObject({ message: keyInvalidMessage() });
     });
   });
 
   describe("concurrency", () => {
     it("allows independent writes to overlap before either transaction commits", async () => {
-      const context = getContext();
+      const context = ctx;
       const keys = [await issueKey(), await issueKey()];
       const barrier = Promise.withResolvers<undefined>();
       let arrived = 0;
@@ -191,7 +185,7 @@ describe("LinkedAccountUseCase.redeemApiKey", () => {
     });
 
     it("rejects a key that expires while consumption waits on an unchanged row lock", async () => {
-      const context = getContext();
+      const context = ctx;
       const { id, key: token } = await issueKey();
       const locker = await context.client.connect();
       let settled: Promise<PromiseSettledResult<unknown>[]> | undefined;
@@ -268,7 +262,7 @@ describe("LinkedAccountUseCase.redeemApiKey", () => {
       // what rejects the losers: only the single-use key check can.
       const results = await Promise.allSettled(
         ["tg-1", "tg-2", "tg-3", "tg-4", "tg-5"].map((platformUserId) =>
-          getContext().useCases.linkedAccount.redeemApiKey({
+          ctx.useCases.linkedAccount.redeemApiKey({
             token,
             platform: platformArgs.platform,
             platformUserId,
@@ -284,7 +278,7 @@ describe("LinkedAccountUseCase.redeemApiKey", () => {
         expect(r.reason).toMatchObject({ message: keyInvalidMessage() });
       }
 
-      const linked = await getContext().services.linkedAccount.listLinkedAccounts(userId);
+      const linked = await ctx.services.linkedAccount.listLinkedAccounts(userId);
       expect(linked).toHaveLength(1);
     });
 
@@ -297,8 +291,8 @@ describe("LinkedAccountUseCase.redeemApiKey", () => {
       };
 
       const results = await Promise.allSettled([
-        getContext().useCases.linkedAccount.redeemApiKey(args),
-        getContext().useCases.linkedAccount.redeemApiKey(args),
+        ctx.useCases.linkedAccount.redeemApiKey(args),
+        ctx.useCases.linkedAccount.redeemApiKey(args),
       ]);
 
       const fulfilled = results.filter((r) => r.status === "fulfilled");
@@ -310,11 +304,11 @@ describe("LinkedAccountUseCase.redeemApiKey", () => {
       expect(rejected[0].reason).toMatchObject({ message: keyInvalidMessage() });
 
       // The account is linked exactly once...
-      const linked = await getContext().services.linkedAccount.listLinkedAccounts(userId);
+      const linked = await ctx.services.linkedAccount.listLinkedAccounts(userId);
       expect(linked).toHaveLength(1);
 
       // ...and the key is really spent: a later attempt is rejected too.
-      await expect(getContext().useCases.linkedAccount.redeemApiKey(args)).rejects.toMatchObject({
+      await expect(ctx.useCases.linkedAccount.redeemApiKey(args)).rejects.toMatchObject({
         message: keyInvalidMessage(),
       });
     });
@@ -322,21 +316,21 @@ describe("LinkedAccountUseCase.redeemApiKey", () => {
 
   describe("error mapping", () => {
     it("maps any ApiKeyError from consumeApiKey to keyInvalid", async () => {
-      vi.spyOn(getContext().services.apiKey, "consumeApiKey").mockRejectedValueOnce(
+      vi.spyOn(ctx.services.apiKey, "consumeApiKey").mockRejectedValueOnce(
         ApiKeyError.keyNotFound()
       );
 
       await expect(
-        getContext().useCases.linkedAccount.redeemApiKey({ token: "whatever", ...platformArgs })
+        ctx.useCases.linkedAccount.redeemApiKey({ token: "whatever", ...platformArgs })
       ).rejects.toMatchObject({ message: keyInvalidMessage() });
     });
 
     it("rethrows non-ApiKeyError errors unchanged", async () => {
       const boom = new Error("db exploded");
-      vi.spyOn(getContext().services.apiKey, "consumeApiKey").mockRejectedValueOnce(boom);
+      vi.spyOn(ctx.services.apiKey, "consumeApiKey").mockRejectedValueOnce(boom);
 
       await expect(
-        getContext().useCases.linkedAccount.redeemApiKey({ token: "whatever", ...platformArgs })
+        ctx.useCases.linkedAccount.redeemApiKey({ token: "whatever", ...platformArgs })
       ).rejects.toBe(boom);
     });
   });
@@ -345,14 +339,14 @@ describe("LinkedAccountUseCase.redeemApiKey", () => {
     it("does not consume the key when linkAccount fails", async () => {
       const { key: token } = await issueKey();
       const boom = new Error("link failed");
-      vi.spyOn(getContext().services.linkedAccount, "linkAccount").mockRejectedValueOnce(boom);
+      vi.spyOn(ctx.services.linkedAccount, "linkAccount").mockRejectedValueOnce(boom);
 
       await expect(
-        getContext().useCases.linkedAccount.redeemApiKey({ token, ...platformArgs })
+        ctx.useCases.linkedAccount.redeemApiKey({ token, ...platformArgs })
       ).rejects.toBe(boom);
 
       // The mock was one-shot, so this call uses the real implementation.
-      const retry = await getContext().useCases.linkedAccount.redeemApiKey({
+      const retry = await ctx.useCases.linkedAccount.redeemApiKey({
         token,
         ...platformArgs,
       });
@@ -362,21 +356,21 @@ describe("LinkedAccountUseCase.redeemApiKey", () => {
     it("does not consume the key when getUser fails", async () => {
       const { key: token } = await issueKey();
       const boom = new Error("user lookup failed");
-      vi.spyOn(getContext().services.user, "getUser").mockRejectedValueOnce(boom);
+      vi.spyOn(ctx.services.user, "getUser").mockRejectedValueOnce(boom);
 
       await expect(
-        getContext().useCases.linkedAccount.redeemApiKey({ token, ...platformArgs })
+        ctx.useCases.linkedAccount.redeemApiKey({ token, ...platformArgs })
       ).rejects.toBe(boom);
 
       // linkAccount succeeded before getUser failed, so the insert must be rolled back too.
       await expect(
-        getContext().services.linkedAccount.getLinkedAccount(
+        ctx.services.linkedAccount.getLinkedAccount(
           platformArgs.platform,
           platformArgs.platformUserId
         )
       ).rejects.toMatchObject({ message: LinkedAccountError.accountNotFound().message });
 
-      const retry = await getContext().useCases.linkedAccount.redeemApiKey({
+      const retry = await ctx.useCases.linkedAccount.redeemApiKey({
         token,
         ...platformArgs,
       });
@@ -385,21 +379,21 @@ describe("LinkedAccountUseCase.redeemApiKey", () => {
 
     it("rejects an already linked platform account and leaves the key unused", async () => {
       const first = await issueKey();
-      await getContext().useCases.linkedAccount.redeemApiKey({ token: first.key, ...platformArgs });
+      await ctx.useCases.linkedAccount.redeemApiKey({ token: first.key, ...platformArgs });
 
       const second = await issueKey();
       await expect(
-        getContext().useCases.linkedAccount.redeemApiKey({ token: second.key, ...platformArgs })
+        ctx.useCases.linkedAccount.redeemApiKey({ token: second.key, ...platformArgs })
       ).rejects.toMatchObject({ message: LinkedAccountError.accountAlreadyLinked().message });
 
-      const [row] = await getContext()
-        .db.select({ lastUsedAt: apiKeys.lastUsedAt })
+      const [row] = await ctx.db
+        .select({ lastUsedAt: apiKeys.lastUsedAt })
         .from(apiKeys)
         .where(eq(apiKeys.id, second.id));
       expect(row.lastUsedAt).toBeNull();
 
       await expect(
-        getContext().useCases.linkedAccount.redeemApiKey({
+        ctx.useCases.linkedAccount.redeemApiKey({
           token: second.key,
           ...platformArgs,
           platformUserId: "tg-other",
@@ -413,16 +407,14 @@ describe("LinkedAccountUseCase.burnApiKey", () => {
   it("makes a valid key unredeemable", async () => {
     const { key: token } = await issueKey();
 
-    await getContext().useCases.linkedAccount.burnApiKey(token);
+    await ctx.useCases.linkedAccount.burnApiKey(token);
 
     await expect(
-      getContext().useCases.linkedAccount.redeemApiKey({ token, ...platformArgs })
+      ctx.useCases.linkedAccount.redeemApiKey({ token, ...platformArgs })
     ).rejects.toMatchObject({ message: keyInvalidMessage() });
   });
 
   it("does not throw for an unknown token", async () => {
-    await expect(
-      getContext().useCases.linkedAccount.burnApiKey("ek_unknown")
-    ).resolves.toBeUndefined();
+    await expect(ctx.useCases.linkedAccount.burnApiKey("ek_unknown")).resolves.toBeUndefined();
   });
 });

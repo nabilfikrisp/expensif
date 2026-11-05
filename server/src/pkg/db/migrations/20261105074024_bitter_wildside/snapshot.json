@@ -3,17 +3,11 @@
   "version": "9",
   "dialect": "postgres",
   "id": "16fe865b-bdbe-4152-aacd-b7f4e60882b3",
-  "prevIds": [
-    "00000000-0000-0000-0000-000000000000"
-  ],
+  "prevIds": ["00000000-0000-0000-0000-000000000000"],
   "footprints": [
     {
       "statementType": "create_table",
-      "statementTarget": [
-        "table",
-        "public",
-        "users"
-      ],
+      "statementTarget": ["table", "public", "users"],
       "writes": [
         "s|tbl|public.users",
         "n|tbl|public.users",
@@ -23,17 +17,11 @@
         "n|rel|public.users_pkey",
         "n|rel|public.users_email_key"
       ],
-      "reads": [
-        "n|sch|public"
-      ]
+      "reads": ["n|sch|public"]
     },
     {
       "statementType": "create_table",
-      "statementTarget": [
-        "table",
-        "public",
-        "categories"
-      ],
+      "statementTarget": ["table", "public", "categories"],
       "writes": [
         "s|tbl|public.categories",
         "n|tbl|public.categories",
@@ -43,17 +31,11 @@
         "n|rel|public.categories_pkey",
         "n|rel|public.categories_slug_key"
       ],
-      "reads": [
-        "n|sch|public"
-      ]
+      "reads": ["n|sch|public"]
     },
     {
       "statementType": "create_table",
-      "statementTarget": [
-        "table",
-        "public",
-        "messages"
-      ],
+      "statementTarget": ["table", "public", "messages"],
       "writes": [
         "s|tbl|public.messages",
         "n|tbl|public.messages",
@@ -63,17 +45,11 @@
         "n|rel|public.messages_pkey",
         "n|rel|public.messages_external_message_id_key"
       ],
-      "reads": [
-        "n|sch|public"
-      ]
+      "reads": ["n|sch|public"]
     },
     {
       "statementType": "create_table",
-      "statementTarget": [
-        "table",
-        "public",
-        "expenses"
-      ],
+      "statementTarget": ["table", "public", "expenses"],
       "writes": [
         "s|tbl|public.expenses",
         "n|tbl|public.expenses",
@@ -82,17 +58,11 @@
         "n|type|public.expenses",
         "n|rel|public.expenses_pkey"
       ],
-      "reads": [
-        "n|sch|public"
-      ]
+      "reads": ["n|sch|public"]
     },
     {
       "statementType": "create_table",
-      "statementTarget": [
-        "table",
-        "public",
-        "linked_accounts"
-      ],
+      "statementTarget": ["table", "public", "linked_accounts"],
       "writes": [
         "s|tbl|public.linked_accounts",
         "n|tbl|public.linked_accounts",
@@ -102,17 +72,11 @@
         "n|rel|public.linked_accounts_pkey",
         "n|rel|public.linked_accounts_platform_user_unique"
       ],
-      "reads": [
-        "n|sch|public"
-      ]
+      "reads": ["n|sch|public"]
     },
     {
       "statementType": "create_table",
-      "statementTarget": [
-        "table",
-        "public",
-        "api_keys"
-      ],
+      "statementTarget": ["table", "public", "api_keys"],
       "writes": [
         "s|tbl|public.api_keys",
         "n|tbl|public.api_keys",
@@ -121,58 +85,33 @@
         "n|type|public.api_keys",
         "n|rel|public.api_keys_pkey"
       ],
-      "reads": [
-        "n|sch|public"
-      ]
+      "reads": ["n|sch|public"]
     },
     {
       "statementType": "create_index",
-      "statementTarget": [
-        "index",
-        "public",
-        "messages",
-        "messages_user_id_idx"
-      ],
+      "statementTarget": ["index", "public", "messages", "messages_user_id_idx"],
       "writes": [
         "s|idx|public.messages_user_id_idx",
         "n|idx|public.messages_user_id_idx",
         "e|idx|public.messages_user_id_idx",
         "n|rel|public.messages_user_id_idx"
       ],
-      "reads": [
-        "n|tbl|public.messages",
-        "n|sch|public",
-        "n|col|public.messages.user_id"
-      ]
+      "reads": ["n|tbl|public.messages", "n|sch|public", "n|col|public.messages.user_id"]
     },
     {
       "statementType": "create_index",
-      "statementTarget": [
-        "index",
-        "public",
-        "messages",
-        "messages_linked_account_id_idx"
-      ],
+      "statementTarget": ["index", "public", "messages", "messages_linked_account_id_idx"],
       "writes": [
         "s|idx|public.messages_linked_account_id_idx",
         "n|idx|public.messages_linked_account_id_idx",
         "e|idx|public.messages_linked_account_id_idx",
         "n|rel|public.messages_linked_account_id_idx"
       ],
-      "reads": [
-        "n|tbl|public.messages",
-        "n|sch|public",
-        "n|col|public.messages.linked_account_id"
-      ]
+      "reads": ["n|tbl|public.messages", "n|sch|public", "n|col|public.messages.linked_account_id"]
     },
     {
       "statementType": "create_index",
-      "statementTarget": [
-        "index",
-        "public",
-        "expenses",
-        "expenses_user_id_date_idx"
-      ],
+      "statementTarget": ["index", "public", "expenses", "expenses_user_id_date_idx"],
       "writes": [
         "s|idx|public.expenses_user_id_date_idx",
         "n|idx|public.expenses_user_id_date_idx",
@@ -188,52 +127,29 @@
     },
     {
       "statementType": "create_index",
-      "statementTarget": [
-        "index",
-        "public",
-        "expenses",
-        "expenses_message_id_idx"
-      ],
+      "statementTarget": ["index", "public", "expenses", "expenses_message_id_idx"],
       "writes": [
         "s|idx|public.expenses_message_id_idx",
         "n|idx|public.expenses_message_id_idx",
         "e|idx|public.expenses_message_id_idx",
         "n|rel|public.expenses_message_id_idx"
       ],
-      "reads": [
-        "n|tbl|public.expenses",
-        "n|sch|public",
-        "n|col|public.expenses.message_id"
-      ]
+      "reads": ["n|tbl|public.expenses", "n|sch|public", "n|col|public.expenses.message_id"]
     },
     {
       "statementType": "create_index",
-      "statementTarget": [
-        "index",
-        "public",
-        "expenses",
-        "expenses_category_id_idx"
-      ],
+      "statementTarget": ["index", "public", "expenses", "expenses_category_id_idx"],
       "writes": [
         "s|idx|public.expenses_category_id_idx",
         "n|idx|public.expenses_category_id_idx",
         "e|idx|public.expenses_category_id_idx",
         "n|rel|public.expenses_category_id_idx"
       ],
-      "reads": [
-        "n|tbl|public.expenses",
-        "n|sch|public",
-        "n|col|public.expenses.category_id"
-      ]
+      "reads": ["n|tbl|public.expenses", "n|sch|public", "n|col|public.expenses.category_id"]
     },
     {
       "statementType": "create_index",
-      "statementTarget": [
-        "index",
-        "public",
-        "linked_accounts",
-        "linked_accounts_user_id_idx"
-      ],
+      "statementTarget": ["index", "public", "linked_accounts", "linked_accounts_user_id_idx"],
       "writes": [
         "s|idx|public.linked_accounts_user_id_idx",
         "n|idx|public.linked_accounts_user_id_idx",
@@ -248,31 +164,18 @@
     },
     {
       "statementType": "create_index",
-      "statementTarget": [
-        "index",
-        "public",
-        "api_keys",
-        "api_keys_key_hash_idx"
-      ],
+      "statementTarget": ["index", "public", "api_keys", "api_keys_key_hash_idx"],
       "writes": [
         "s|idx|public.api_keys_key_hash_idx",
         "n|idx|public.api_keys_key_hash_idx",
         "e|idx|public.api_keys_key_hash_idx",
         "n|rel|public.api_keys_key_hash_idx"
       ],
-      "reads": [
-        "n|tbl|public.api_keys",
-        "n|sch|public",
-        "n|col|public.api_keys.key_hash"
-      ]
+      "reads": ["n|tbl|public.api_keys", "n|sch|public", "n|col|public.api_keys.key_hash"]
     },
     {
       "statementType": "create_fk",
-      "statementTarget": [
-        "table",
-        "public",
-        "messages"
-      ],
+      "statementTarget": ["table", "public", "messages"],
       "writes": [
         "s|fk|public.messages.messages_user_id_users_id_fkey",
         "n|fk|public.messages.messages_user_id_users_id_fkey",
@@ -291,11 +194,7 @@
     },
     {
       "statementType": "create_fk",
-      "statementTarget": [
-        "table",
-        "public",
-        "messages"
-      ],
+      "statementTarget": ["table", "public", "messages"],
       "writes": [
         "s|fk|public.messages.messages_linked_account_id_linked_accounts_id_fkey",
         "n|fk|public.messages.messages_linked_account_id_linked_accounts_id_fkey",
@@ -314,11 +213,7 @@
     },
     {
       "statementType": "create_fk",
-      "statementTarget": [
-        "table",
-        "public",
-        "expenses"
-      ],
+      "statementTarget": ["table", "public", "expenses"],
       "writes": [
         "s|fk|public.expenses.expenses_message_id_messages_id_fkey",
         "n|fk|public.expenses.expenses_message_id_messages_id_fkey",
@@ -337,11 +232,7 @@
     },
     {
       "statementType": "create_fk",
-      "statementTarget": [
-        "table",
-        "public",
-        "expenses"
-      ],
+      "statementTarget": ["table", "public", "expenses"],
       "writes": [
         "s|fk|public.expenses.expenses_user_id_users_id_fkey",
         "n|fk|public.expenses.expenses_user_id_users_id_fkey",
@@ -360,11 +251,7 @@
     },
     {
       "statementType": "create_fk",
-      "statementTarget": [
-        "table",
-        "public",
-        "expenses"
-      ],
+      "statementTarget": ["table", "public", "expenses"],
       "writes": [
         "s|fk|public.expenses.expenses_category_id_categories_id_fkey",
         "n|fk|public.expenses.expenses_category_id_categories_id_fkey",
@@ -383,11 +270,7 @@
     },
     {
       "statementType": "create_fk",
-      "statementTarget": [
-        "table",
-        "public",
-        "linked_accounts"
-      ],
+      "statementTarget": ["table", "public", "linked_accounts"],
       "writes": [
         "s|fk|public.linked_accounts.linked_accounts_user_id_users_id_fkey",
         "n|fk|public.linked_accounts.linked_accounts_user_id_users_id_fkey",
@@ -406,11 +289,7 @@
     },
     {
       "statementType": "create_fk",
-      "statementTarget": [
-        "table",
-        "public",
-        "api_keys"
-      ],
+      "statementTarget": ["table", "public", "api_keys"],
       "writes": [
         "s|fk|public.api_keys.api_keys_user_id_users_id_fkey",
         "n|fk|public.api_keys.api_keys_user_id_users_id_fkey",
@@ -1157,14 +1036,10 @@
       "table": "messages",
       "name": "messages_user_id_users_id_fkey",
       "nameExplicit": false,
-      "columns": [
-        "user_id"
-      ],
+      "columns": ["user_id"],
       "schemaTo": "public",
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "entityType": "fks"
@@ -1174,14 +1049,10 @@
       "table": "messages",
       "name": "messages_linked_account_id_linked_accounts_id_fkey",
       "nameExplicit": false,
-      "columns": [
-        "linked_account_id"
-      ],
+      "columns": ["linked_account_id"],
       "schemaTo": "public",
       "tableTo": "linked_accounts",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "entityType": "fks"
@@ -1191,14 +1062,10 @@
       "table": "expenses",
       "name": "expenses_message_id_messages_id_fkey",
       "nameExplicit": false,
-      "columns": [
-        "message_id"
-      ],
+      "columns": ["message_id"],
       "schemaTo": "public",
       "tableTo": "messages",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "entityType": "fks"
@@ -1208,14 +1075,10 @@
       "table": "expenses",
       "name": "expenses_user_id_users_id_fkey",
       "nameExplicit": false,
-      "columns": [
-        "user_id"
-      ],
+      "columns": ["user_id"],
       "schemaTo": "public",
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "entityType": "fks"
@@ -1225,14 +1088,10 @@
       "table": "expenses",
       "name": "expenses_category_id_categories_id_fkey",
       "nameExplicit": false,
-      "columns": [
-        "category_id"
-      ],
+      "columns": ["category_id"],
       "schemaTo": "public",
       "tableTo": "categories",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "SET NULL",
       "entityType": "fks"
@@ -1242,14 +1101,10 @@
       "table": "linked_accounts",
       "name": "linked_accounts_user_id_users_id_fkey",
       "nameExplicit": false,
-      "columns": [
-        "user_id"
-      ],
+      "columns": ["user_id"],
       "schemaTo": "public",
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "entityType": "fks"
@@ -1259,14 +1114,10 @@
       "table": "api_keys",
       "name": "api_keys_user_id_users_id_fkey",
       "nameExplicit": false,
-      "columns": [
-        "user_id"
-      ],
+      "columns": ["user_id"],
       "schemaTo": "public",
       "tableTo": "users",
-      "columnsTo": [
-        "id"
-      ],
+      "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
       "entityType": "fks"
@@ -1275,9 +1126,7 @@
       "schema": "public",
       "table": "users",
       "name": "users_pkey",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
@@ -1285,9 +1134,7 @@
       "schema": "public",
       "table": "categories",
       "name": "categories_pkey",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
@@ -1295,9 +1142,7 @@
       "schema": "public",
       "table": "messages",
       "name": "messages_pkey",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
@@ -1305,9 +1150,7 @@
       "schema": "public",
       "table": "expenses",
       "name": "expenses_pkey",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
@@ -1315,9 +1158,7 @@
       "schema": "public",
       "table": "linked_accounts",
       "name": "linked_accounts_pkey",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
@@ -1325,9 +1166,7 @@
       "schema": "public",
       "table": "api_keys",
       "name": "api_keys_pkey",
-      "columns": [
-        "id"
-      ],
+      "columns": ["id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
@@ -1336,10 +1175,7 @@
       "table": "linked_accounts",
       "name": "linked_accounts_platform_user_unique",
       "nameExplicit": true,
-      "columns": [
-        "platform",
-        "platform_user_id"
-      ],
+      "columns": ["platform", "platform_user_id"],
       "nullsNotDistinct": false,
       "entityType": "uniques"
     },
@@ -1348,9 +1184,7 @@
       "table": "users",
       "name": "users_email_key",
       "nameExplicit": false,
-      "columns": [
-        "email"
-      ],
+      "columns": ["email"],
       "nullsNotDistinct": false,
       "entityType": "uniques"
     },
@@ -1359,9 +1193,7 @@
       "table": "categories",
       "name": "categories_slug_key",
       "nameExplicit": false,
-      "columns": [
-        "slug"
-      ],
+      "columns": ["slug"],
       "nullsNotDistinct": false,
       "entityType": "uniques"
     },
@@ -1370,9 +1202,7 @@
       "table": "messages",
       "name": "messages_external_message_id_key",
       "nameExplicit": false,
-      "columns": [
-        "external_message_id"
-      ],
+      "columns": ["external_message_id"],
       "nullsNotDistinct": false,
       "entityType": "uniques"
     }
