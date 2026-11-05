@@ -10,16 +10,20 @@ import { API_PREFIX } from "@/pkg/http";
 import { errorRespSchema } from "@/shared/response.schema";
 
 let app: OpenAPIHono;
-let dbClient: DbClient;
+let dbClient: DbClient | undefined;
 
 beforeEach(async () => {
+  dbClient = undefined;
   const testCtx = await initTest();
   app = testCtx.app;
   dbClient = testCtx.client;
 });
 
-afterEach(() => {
-  dbClient.close();
+afterEach(async () => {
+  if (dbClient) {
+    await dbClient.end();
+    dbClient = undefined;
+  }
 });
 
 describe(`GET ${API_PREFIX}/auth/me`, () => {

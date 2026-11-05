@@ -1,8 +1,7 @@
-import { sql } from "drizzle-orm";
-import { index, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { users } from "@/modules/user/schema";
 
-export const apiKeys = sqliteTable(
+export const apiKeys = pgTable(
   "api_keys",
   {
     id: text("id").primaryKey(),
@@ -12,12 +11,12 @@ export const apiKeys = sqliteTable(
     keyHash: text("key_hash").notNull(),
     keyHint: text("key_hint").notNull(),
     label: text("label"),
-    createdAt: text("created_at")
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
       .notNull()
-      .default(sql`CURRENT_TIMESTAMP`),
-    expiresAt: text("expires_at").notNull(),
-    lastUsedAt: text("last_used_at"),
-    revokedAt: text("revoked_at"),
+      .defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true, mode: "string" }).notNull(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true, mode: "string" }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true, mode: "string" }),
   },
   (t) => [index("api_keys_key_hash_idx").on(t.keyHash)]
 );

@@ -46,7 +46,7 @@ export async function shutdown(signal: string, opts: ShutdownOptions) {
     });
     logger.info("HTTP server closed");
 
-    dbClient.close();
+    await dbClient.end();
     logger.info("Database connection closed");
 
     logger.info("Shutdown complete");

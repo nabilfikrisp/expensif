@@ -1,10 +1,9 @@
-import { sql } from "drizzle-orm";
-import { index, numeric, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { date, index, numeric, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { categories } from "@/modules/category/schema";
 import { messages } from "@/modules/message/schema";
 import { users } from "@/modules/user/schema";
 
-export const expenses = sqliteTable(
+export const expenses = pgTable(
   "expenses",
   {
     id: text("id").primaryKey(),
@@ -14,16 +13,17 @@ export const expenses = sqliteTable(
       .references(() => users.id, { onDelete: "cascade" }),
     categoryId: text("category_id").references(() => categories.id, { onDelete: "set null" }),
     itemName: text("item_name").notNull(),
-    amount: numeric("amount").notNull(),
+    // Exact decimal strings: 18 integer digits and 2 fractional digits. PostgreSQL rounds excess scale.
+    amount: numeric("amount", { precision: 20, scale: 2 }).notNull(),
     currency: text("currency").notNull().default("IDR"),
-    expenseDate: text("expense_date").notNull(),
+    expenseDate: date("expense_date", { mode: "string" }).notNull(),
     note: text("note"),
-    createdAt: text("created_at")
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
       .notNull()
-      .default(sql`CURRENT_TIMESTAMP`),
-    updatedAt: text("updated_at")
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" })
       .notNull()
-      .default(sql`CURRENT_TIMESTAMP`),
+      .defaultNow(),
   },
   (t) => [
     index("expenses_user_id_date_idx").on(t.userId, t.expenseDate),

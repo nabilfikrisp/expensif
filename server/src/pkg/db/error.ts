@@ -1,43 +1,24 @@
-import { DrizzleQueryError } from "drizzle-orm";
-
-function rootCauseError(err: unknown): Error | null {
+function hasSqlState(err: unknown, sqlState: string): boolean {
+  const seen = new Set<unknown>();
   let current: unknown = err;
-  while (current instanceof Error && current.cause instanceof Error) {
-    current = current.cause;
+
+  while (current !== null && typeof current === "object" && !seen.has(current)) {
+    seen.add(current);
+
+    if ("code" in current && current.code === sqlState) {
+      return true;
+    }
+
+    current = "cause" in current ? current.cause : undefined;
   }
-  return current instanceof Error ? current : null;
+
+  return false;
 }
 
 export function isUniqueConstraintError(err: unknown): boolean {
-  // SQLite
-  if (rootCauseError(err)?.message.includes("UNIQUE constraint failed")) {
-    return true;
-  }
-
-  // PostgreSQL
-  if (err instanceof DrizzleQueryError && err.cause) {
-    const cause = err.cause;
-    if ("code" in cause && cause.code === "23505") {
-      return true;
-    }
-  }
-
-  return false;
+  return hasSqlState(err, "23505");
 }
 
 export function isForeignKeyConstraintError(err: unknown): boolean {
-  // SQLite
-  if (rootCauseError(err)?.message.includes("FOREIGN KEY constraint failed")) {
-    return true;
-  }
-
-  // PostgreSQL
-  if (err instanceof DrizzleQueryError && err.cause) {
-    const cause = err.cause;
-    if ("code" in cause && cause.code === "23503") {
-      return true;
-    }
-  }
-
-  return false;
+  return hasSqlState(err, "23503");
 }

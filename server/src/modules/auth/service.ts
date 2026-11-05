@@ -24,7 +24,7 @@ export function initAuthService(env: EnvSchema, db: Db) {
       const passwordHash = await hashPassword(password);
 
       try {
-        await db.insert(users).values({ id, email, passwordHash, name }).run();
+        await db.insert(users).values({ id, email, passwordHash, name });
       } catch (err: unknown) {
         if (isUniqueConstraintError(err)) {
           throw AuthError.emailAlreadyRegistered();
@@ -51,7 +51,7 @@ export function initAuthService(env: EnvSchema, db: Db) {
       return { accessToken, refreshToken, csrfToken };
     },
     async login(email: string, password: string) {
-      const user = await db.select().from(users).where(eq(users.email, email)).get();
+      const user = (await db.select().from(users).where(eq(users.email, email)).limit(1)).at(0);
 
       if (!user) {
         throw AuthError.invalidCredentials();

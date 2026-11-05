@@ -1,9 +1,8 @@
-import { sql } from "drizzle-orm";
-import { index, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { linkedAccounts } from "@/modules/linked-account/schema";
 import { users } from "@/modules/user/schema";
 
-export const messages = sqliteTable(
+export const messages = pgTable(
   "messages",
   {
     id: text("id").primaryKey(),
@@ -16,9 +15,9 @@ export const messages = sqliteTable(
     rawText: text("raw_text").notNull(),
     externalMessageId: text("external_message_id").unique(),
     parseStatus: text("parse_status").notNull(),
-    receivedAt: text("received_at")
+    receivedAt: timestamp("received_at", { withTimezone: true, mode: "string" })
       .notNull()
-      .default(sql`CURRENT_TIMESTAMP`),
+      .defaultNow(),
   },
   (t) => [
     index("messages_user_id_idx").on(t.userId),

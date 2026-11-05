@@ -7,11 +7,13 @@ import type { Db, DbTx } from "@/pkg/db";
 export function initUserService(db: Db) {
   return {
     async getUser(userId: string, tx: DbTx = db) {
-      const user = await tx
-        .select({ id: users.id, name: users.name, email: users.email })
-        .from(users)
-        .where(eq(users.id, userId))
-        .get();
+      const user = (
+        await tx
+          .select({ id: users.id, name: users.name, email: users.email })
+          .from(users)
+          .where(eq(users.id, userId))
+          .limit(1)
+      ).at(0);
 
       if (!user) {
         throw UserError.notFound();
@@ -20,11 +22,13 @@ export function initUserService(db: Db) {
       return user;
     },
     async getUserByEmail(email: string, tx: DbTx = db) {
-      const user = await tx
-        .select({ id: users.id, name: users.name, email: users.email })
-        .from(users)
-        .where(eq(users.email, email))
-        .get();
+      const user = (
+        await tx
+          .select({ id: users.id, name: users.name, email: users.email })
+          .from(users)
+          .where(eq(users.email, email))
+          .limit(1)
+      ).at(0);
 
       if (!user) {
         throw UserError.notFound();

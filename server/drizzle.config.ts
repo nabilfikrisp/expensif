@@ -11,7 +11,7 @@ if (!dbUrl) {
 export default defineConfig({
   out: "./src/pkg/db/migrations",
   schema: "./src/pkg/db/schema.ts",
-  dialect: "sqlite",
+  dialect: "postgresql",
   // this part is only for drizzle kit migrate and studio
   dbCredentials: {
     url: dbUrl,

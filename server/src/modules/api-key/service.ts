@@ -1,10 +1,10 @@
 import { z } from "@hono/zod-openapi";
-import { and, count, eq, isNotNull, isNull, like, sql } from "drizzle-orm";
+import { and, count, eq, ilike, isNotNull, isNull, sql } from "drizzle-orm";
 import { createHmac } from "node:crypto";
 
 import { ApiKeyError } from "@/modules/api-key/error";
 import { apiKeys } from "@/modules/api-key/schema";
-import type { Db, DbTx } from "@/pkg/db";
+import type { Db, DbTx, Tx } from "@/pkg/db";
 import type { EnvSchema } from "@/pkg/env";
 
 export const listApiKeysQuerySchema = z
@@ -33,7 +33,6 @@ export function initApiKeyService(env: EnvSchema, db: Db) {
       const key = `${KEY_PREFIX}${rawKey}`;
       const keyHint = `${KEY_PREFIX}****${rawKey.slice(-4)}`;
       const keyHash = hashApiKey(env, key);
-      const expireModifier = `+${env.API_KEY_REDEEM_WINDOW_MINUTES} minutes`;
 
       const [inserted] = await db
         .insert(apiKeys)
@@ -43,7 +42,7 @@ export function initApiKeyService(env: EnvSchema, db: Db) {
           keyHash,
           label: defaultLabel,
           keyHint,
-          expiresAt: sql`datetime(CURRENT_TIMESTAMP, ${expireModifier})`,
+          expiresAt: sql`CURRENT_TIMESTAMP + make_interval(mins => ${env.API_KEY_REDEEM_WINDOW_MINUTES}::integer)`,
         })
         .returning();
 
@@ -81,7 +80,7 @@ export function initApiKeyService(env: EnvSchema, db: Db) {
       // "all" — no additional filter
 
       if (filters?.label) {
-        conditions.push(like(apiKeys.label, `%${filters.label}%`));
+        conditions.push(ilike(apiKeys.label, `%${filters.label}%`));
       }
 
       const where = and(...conditions);
@@ -99,14 +98,9 @@ export function initApiKeyService(env: EnvSchema, db: Db) {
         .from(apiKeys)
         .where(where)
         .limit(limit)
-        .offset(offset)
-        .all();
+        .offset(offset);
 
-      const [{ count: total }] = await db
-        .select({ count: count() })
-        .from(apiKeys)
-        .where(where)
-        .all();
+      const [{ count: total }] = await db.select({ count: count() }).from(apiKeys).where(where);
 
       const totalPages = Math.ceil(total / limit);
 
@@ -123,23 +117,37 @@ export function initApiKeyService(env: EnvSchema, db: Db) {
     /**
      * Atomically verify and consume an API key (single-use enforcement).
      *
-     * Validates key hash, checks not revoked/used/expired (15-min TTL), marks as used.
+     * Validates key hash, checks not revoked/used/expired, marks as used.
      * Throws ApiKeyError.keyInvalid() if validation fails.
      * Must be called within a transaction for rollback support, `tx` is required
      * so a caller can't accidentally burn a key outside one.
      */
-    async consumeApiKey(plainKey: string, tx: DbTx) {
+    async consumeApiKey(plainKey: string, tx: Tx) {
       const keyHash = hashApiKey(env, plainKey);
+
+      // Acquire the lock before checking expiry, including waits on an unchanged row.
+      const key = (
+        await tx
+          .select({ id: apiKeys.id })
+          .from(apiKeys)
+          .where(eq(apiKeys.keyHash, keyHash))
+          .limit(1)
+          .for("update")
+      ).at(0);
+
+      if (!key) {
+        throw ApiKeyError.keyInvalid();
+      }
 
       const result = await tx
         .update(apiKeys)
-        .set({ lastUsedAt: sql`(CURRENT_TIMESTAMP)` })
+        .set({ lastUsedAt: sql`clock_timestamp()` })
         .where(
           and(
-            eq(apiKeys.keyHash, keyHash),
+            eq(apiKeys.id, key.id),
             isNull(apiKeys.revokedAt),
             isNull(apiKeys.lastUsedAt),
-            sql`${apiKeys.expiresAt} > CURRENT_TIMESTAMP`
+            sql`${apiKeys.expiresAt} > clock_timestamp()`
           )
         )
         .returning({ userId: apiKeys.userId });
@@ -154,26 +162,29 @@ export function initApiKeyService(env: EnvSchema, db: Db) {
       const keyHash = hashApiKey(env, plainKey);
       await tx
         .update(apiKeys)
-        .set({ lastUsedAt: sql`(CURRENT_TIMESTAMP)` })
-        .where(and(eq(apiKeys.keyHash, keyHash), isNull(apiKeys.lastUsedAt)))
-        .run();
+        .set({ lastUsedAt: sql`clock_timestamp()` })
+        .where(and(eq(apiKeys.keyHash, keyHash), isNull(apiKeys.lastUsedAt)));
     },
     async revokeApiKey(userId: string, keyId: string) {
       const result = await db
         .update(apiKeys)
-        .set({ revokedAt: sql`(CURRENT_TIMESTAMP)` })
+        .set({ revokedAt: sql`clock_timestamp()` })
         .where(and(eq(apiKeys.id, keyId), eq(apiKeys.userId, userId), isNull(apiKeys.revokedAt)))
-        .run();
+        .returning({ id: apiKeys.id });
 
-      if (result.rowsAffected === 0) {
-        const [existing] = await db
-          .select({ id: apiKeys.id, revokedAt: apiKeys.revokedAt })
-          .from(apiKeys)
-          .where(and(eq(apiKeys.id, keyId), eq(apiKeys.userId, userId)))
-          .limit(1)
-          .all();
+      if (result.length === 0) {
+        const existing = (
+          await db
+            .select({ id: apiKeys.id, revokedAt: apiKeys.revokedAt })
+            .from(apiKeys)
+            .where(and(eq(apiKeys.id, keyId), eq(apiKeys.userId, userId)))
+            .limit(1)
+        ).at(0);
 
-        if (existing.revokedAt) {
+        if (!existing) {
+          throw ApiKeyError.keyNotFound();
+        }
+        if (existing.revokedAt !== null) {
           throw ApiKeyError.keyAlreadyRevoked();
         }
         throw ApiKeyError.keyNotFound();
@@ -184,9 +195,9 @@ export function initApiKeyService(env: EnvSchema, db: Db) {
       const result = await db
         .delete(apiKeys)
         .where(and(eq(apiKeys.id, keyId), eq(apiKeys.userId, userId)))
-        .run();
+        .returning({ id: apiKeys.id });
 
-      if (result.rowsAffected === 0) {
+      if (result.length === 0) {
         throw ApiKeyError.keyNotFound();
       }
     },

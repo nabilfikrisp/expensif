@@ -41,16 +41,18 @@ export function initLinkedAccountService(db: Db) {
     },
 
     async getLinkedAccount(platform: string, platformUserId: string) {
-      const row = await db
-        .select()
-        .from(linkedAccounts)
-        .where(
-          and(
-            eq(linkedAccounts.platform, platform),
-            eq(linkedAccounts.platformUserId, platformUserId)
+      const row = (
+        await db
+          .select()
+          .from(linkedAccounts)
+          .where(
+            and(
+              eq(linkedAccounts.platform, platform),
+              eq(linkedAccounts.platformUserId, platformUserId)
+            )
           )
-        )
-        .get();
+          .limit(1)
+      ).at(0);
 
       if (!row) {
         throw LinkedAccountError.accountNotFound();
@@ -60,22 +62,24 @@ export function initLinkedAccountService(db: Db) {
     },
 
     async getUserByLinkedAccount(platform: string, platformUserId: string) {
-      const row = await db
-        .select({
-          userId: linkedAccounts.userId,
-          linkedAccountId: linkedAccounts.id,
-          name: users.name,
-          email: users.email,
-        })
-        .from(linkedAccounts)
-        .innerJoin(users, eq(linkedAccounts.userId, users.id))
-        .where(
-          and(
-            eq(linkedAccounts.platform, platform),
-            eq(linkedAccounts.platformUserId, platformUserId)
+      const row = (
+        await db
+          .select({
+            userId: linkedAccounts.userId,
+            linkedAccountId: linkedAccounts.id,
+            name: users.name,
+            email: users.email,
+          })
+          .from(linkedAccounts)
+          .innerJoin(users, eq(linkedAccounts.userId, users.id))
+          .where(
+            and(
+              eq(linkedAccounts.platform, platform),
+              eq(linkedAccounts.platformUserId, platformUserId)
+            )
           )
-        )
-        .get();
+          .limit(1)
+      ).at(0);
 
       if (!row) {
         throw LinkedAccountError.accountNotFound();
@@ -90,7 +94,7 @@ export function initLinkedAccountService(db: Db) {
     },
 
     async listLinkedAccounts(userId: string) {
-      return db
+      return await db
         .select({
           id: linkedAccounts.id,
           platform: linkedAccounts.platform,
@@ -99,17 +103,16 @@ export function initLinkedAccountService(db: Db) {
           linkedAt: linkedAccounts.linkedAt,
         })
         .from(linkedAccounts)
-        .where(eq(linkedAccounts.userId, userId))
-        .all();
+        .where(eq(linkedAccounts.userId, userId));
     },
 
     async unlinkAccount(userId: string, accountId: string) {
       const result = await db
         .delete(linkedAccounts)
         .where(and(eq(linkedAccounts.id, accountId), eq(linkedAccounts.userId, userId)))
-        .run();
+        .returning({ id: linkedAccounts.id });
 
-      if (result.rowsAffected === 0) {
+      if (result.length === 0) {
         throw LinkedAccountError.accountNotFound();
       }
     },

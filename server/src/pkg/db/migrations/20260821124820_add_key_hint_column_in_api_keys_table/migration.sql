@@ -1,1 +1,0 @@
-ALTER TABLE `api_keys` ADD `key_hint` text NOT NULL;

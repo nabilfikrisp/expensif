@@ -1,8 +1,7 @@
-import { sql } from "drizzle-orm";
-import { index, sqliteTable, text, unique } from "drizzle-orm/sqlite-core";
+import { index, pgTable, text, timestamp, unique } from "drizzle-orm/pg-core";
 import { users } from "@/modules/user/schema";
 
-export const linkedAccounts = sqliteTable(
+export const linkedAccounts = pgTable(
   "linked_accounts",
   {
     id: text("id").primaryKey(),
@@ -12,9 +11,7 @@ export const linkedAccounts = sqliteTable(
     platform: text("platform").notNull(),
     platformUserId: text("platform_user_id").notNull(),
     platformUsername: text("platform_username"),
-    linkedAt: text("linked_at")
-      .notNull()
-      .default(sql`CURRENT_TIMESTAMP`),
+    linkedAt: timestamp("linked_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
   },
   (t) => [
     index("linked_accounts_user_id_idx").on(t.userId),

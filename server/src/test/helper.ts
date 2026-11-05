@@ -1,8 +1,4 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
-import type { createClient } from "@libsql/client";
-import { randomUUID } from "crypto";
-import fs from "fs";
-import path from "path";
 
 import { initApiKeyService } from "@/modules/api-key/service";
 import { initAuthRoutes } from "@/modules/auth/controllers/http";
@@ -12,42 +8,43 @@ import { initLinkedAccountService } from "@/modules/linked-account/service";
 import { initLinkedAccountUseCase } from "@/modules/linked-account/use-case";
 import { initUserService } from "@/modules/user/service";
 import { initDb } from "@/pkg/db";
-import type { Db } from "@/pkg/db";
+import type { Db, DbClient } from "@/pkg/db";
 import type { EnvSchema } from "@/pkg/env";
 import { API_PREFIX, initHttp } from "@/pkg/http";
 import { initLogger } from "@/pkg/logger";
 import { initRateLimiters } from "@/shared/rate-limit";
 
-async function runMigrations(client: ReturnType<typeof createClient>) {
-  const migrationsDir = path.resolve(import.meta.dirname, "../pkg/db/migrations");
-  const folders = fs
-    .readdirSync(migrationsDir)
-    .filter((f) => fs.statSync(path.join(migrationsDir, f)).isDirectory())
-    .sort();
+export const TEST_DATABASE_URL =
+  "postgres://expensif_test:local_test_password@127.0.0.1:5433/expensif_test";
 
-  const statements: string[] = [];
-  for (const folder of folders) {
-    const file = path.join(migrationsDir, folder, "migration.sql");
-    if (!fs.existsSync(file)) {
-      continue;
-    }
-
-    const sql = fs.readFileSync(file, "utf-8");
-    statements.push(
-      ...sql
-        .split("--> statement-breakpoint")
-        .map((s) => s.trim())
-        .filter(Boolean)
-    );
+export async function assertTestDatabase(client?: DbClient) {
+  const url = new URL(TEST_DATABASE_URL);
+  if (
+    url.protocol !== "postgres:" ||
+    url.hostname !== "127.0.0.1" ||
+    url.port !== "5433" ||
+    url.pathname !== "/expensif_test" ||
+    url.username !== "expensif_test" ||
+    url.search !== ""
+  ) {
+    throw new Error("Refusing to use an unexpected test database URL");
   }
 
-  await client.migrate(statements);
+  if (client) {
+    const result = await client.query<{ database: string; role: string }>(
+      "SELECT current_database() AS database, current_user AS role"
+    );
+    const identity = result.rows.at(0);
+    if (identity?.database !== "expensif_test" || identity.role !== "expensif_test") {
+      throw new Error("Refusing to use a database or role other than expensif_test");
+    }
+  }
 }
 
-function buildEnv(databaseUrl: string): EnvSchema {
+function buildEnv(): EnvSchema {
   return {
     NODE_ENV: "test",
-    DATABASE_URL: databaseUrl,
+    DATABASE_URL: TEST_DATABASE_URL,
     PORT: 0,
     DEPLOY_PROXY: "none",
     JWT_SECRET: "test-secret-must-be-at-least-32-characters",
@@ -111,33 +108,29 @@ function buildApp(env: EnvSchema, db: Db) {
   };
 }
 
-async function setup(url: string) {
-  const { db, client } = initDb(url);
-  await runMigrations(client);
-  const env = buildEnv(url);
-  const appBuild = buildApp(env, db);
-  return { db, client, env, ...appBuild };
-}
-
-/** General integration tests (HTTP etc.). Fast, in-memory. No transactions. */
 export async function initTest() {
-  return setup(":memory:");
+  await assertTestDatabase();
+  const { db, client } = initDb(TEST_DATABASE_URL);
+  try {
+    await assertTestDatabase(client);
+    await client.query(
+      "TRUNCATE TABLE public.users, public.categories, public.messages, public.expenses, public.linked_accounts, public.api_keys"
+    );
+    const env = buildEnv();
+    return { db, client, env, ...buildApp(env, db) };
+  } catch (error) {
+    try {
+      await client.end();
+    } catch (cleanupError) {
+      throw new AggregateError([error, cleanupError], "Test setup and pool cleanup failed");
+    }
+    throw error;
+  }
 }
 
-/** Use case / service tests that rely on transactions. Real SQLite file via libsql. */
 export async function initUseCaseTest() {
-  // One folder per test: test/temp/<uuid>/test.db (gitignore test/temp/).
-  const dir = path.join(import.meta.dirname, "temp", randomUUID());
-  fs.mkdirSync(dir, { recursive: true });
-
-  const ctx = await setup(`file:${path.join(dir, "test.db")}`);
-
-  const cleanup = () => {
-    ctx.client.close();
-    fs.rmSync(dir, { recursive: true, force: true });
-  };
-
-  return { ...ctx, cleanup };
+  const ctx = await initTest();
+  return { ...ctx, cleanup: () => ctx.client.end() };
 }
 
 export async function registerAndGetToken(
