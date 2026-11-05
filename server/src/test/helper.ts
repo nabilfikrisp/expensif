@@ -1,8 +1,7 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
-import { createClient } from "@libsql/client";
-import { drizzle } from "drizzle-orm/libsql";
+import type { createClient } from "@libsql/client";
+import { randomUUID } from "crypto";
 import fs from "fs";
-import os from "os";
 import path from "path";
 
 import { initApiKeyService } from "@/modules/api-key/service";
@@ -12,8 +11,8 @@ import { initAuthService } from "@/modules/auth/service";
 import { initLinkedAccountService } from "@/modules/linked-account/service";
 import { initLinkedAccountUseCase } from "@/modules/linked-account/use-case";
 import { initUserService } from "@/modules/user/service";
-import type { Db, DbClient } from "@/pkg/db";
-import { relations } from "@/pkg/db/relations";
+import { initDb } from "@/pkg/db";
+import type { Db } from "@/pkg/db";
 import type { EnvSchema } from "@/pkg/env";
 import { API_PREFIX, initHttp } from "@/pkg/http";
 import { initLogger } from "@/pkg/logger";
@@ -26,6 +25,7 @@ async function runMigrations(client: ReturnType<typeof createClient>) {
     .filter((f) => fs.statSync(path.join(migrationsDir, f)).isDirectory())
     .sort();
 
+  const statements: string[] = [];
   for (const folder of folders) {
     const file = path.join(migrationsDir, folder, "migration.sql");
     if (!fs.existsSync(file)) {
@@ -33,15 +33,15 @@ async function runMigrations(client: ReturnType<typeof createClient>) {
     }
 
     const sql = fs.readFileSync(file, "utf-8");
-    const statements = sql
-      .split("--> statement-breakpoint")
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    for (const stmt of statements) {
-      await client.execute(stmt);
-    }
+    statements.push(
+      ...sql
+        .split("--> statement-breakpoint")
+        .map((s) => s.trim())
+        .filter(Boolean)
+    );
   }
+
+  await client.migrate(statements);
 }
 
 function buildEnv(databaseUrl: string): EnvSchema {
@@ -111,9 +111,9 @@ function buildApp(env: EnvSchema, db: Db) {
   };
 }
 
-async function setup(client: DbClient, url: string) {
+async function setup(url: string) {
+  const { db, client } = initDb(url);
   await runMigrations(client);
-  const db = drizzle({ client, relations });
   const env = buildEnv(url);
   const appBuild = buildApp(env, db);
   return { db, client, env, ...appBuild };
@@ -121,20 +121,19 @@ async function setup(client: DbClient, url: string) {
 
 /** General integration tests (HTTP etc.). Fast, in-memory. No transactions. */
 export async function initTest() {
-  const client = createClient({ url: ":memory:" });
-  return setup(client, ":memory:");
+  return setup(":memory:");
 }
 
 /** Use case / service tests that rely on transactions. Real SQLite file via libsql. */
 export async function initUseCaseTest() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "usecase-test-"));
-  const url = `file:${path.join(dir, "test.db")}`;
-  const client = createClient({ url });
+  // One folder per test: test/temp/<uuid>/test.db (gitignore test/temp/).
+  const dir = path.join(import.meta.dirname, "temp", randomUUID());
+  fs.mkdirSync(dir, { recursive: true });
 
-  const ctx = await setup(client, url);
+  const ctx = await setup(`file:${path.join(dir, "test.db")}`);
 
   const cleanup = () => {
-    client.close();
+    ctx.client.close();
     fs.rmSync(dir, { recursive: true, force: true });
   };
 
