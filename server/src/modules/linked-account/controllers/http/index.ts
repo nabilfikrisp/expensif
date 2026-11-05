@@ -5,6 +5,7 @@ import { initDeleteLinkedAccountRoute } from "./delete";
 import { initListLinkedAccountsRoute } from "./list";
 
 import type { AuthMiddleware } from "@/modules/auth/controllers/middleware";
+import { AuthError } from "@/modules/auth/error";
 import { LinkedAccountError } from "@/modules/linked-account/error";
 import type { LinkedAccountService } from "@/modules/linked-account/service";
 
@@ -27,7 +28,7 @@ export function initLinkedAccountRoutes(
   app.route("/", deleteLinkedAccountRoute);
 
   app.onError((err, c) => {
-    if (err instanceof LinkedAccountError) {
+    if (err instanceof LinkedAccountError || err instanceof AuthError) {
       return c.json(
         {
           success: false,

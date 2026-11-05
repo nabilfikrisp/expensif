@@ -78,7 +78,7 @@ describe(`POST ${API_PREFIX}/auth/register`, () => {
 
     expect(csrfCookie).toBeDefined();
     expect(csrfCookie).not.toContain("HttpOnly");
-    expect(csrfCookie).toContain("Path=/api/v1/auth");
+    expect(csrfCookie).toContain("Path=/;");
   });
 
   it("returns 409 when email already exists", async () => {

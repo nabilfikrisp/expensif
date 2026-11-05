@@ -1,81 +1,90 @@
-# Expense Tracker — Table Reference
+# PostgreSQL table reference
 
-## USERS
+Source of truth: `server/src/modules/*/schema.ts` and committed migrations under `server/src/pkg/db/migrations/`. The tables below describe the current schema, including tables not yet used by runtime expense persistence.
 
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid | PK |
-| email | string | unique, dashboard login |
-| password_hash | string | bcrypt hash |
-| name | string | display name |
-| created_at | timestamp | `CURRENT_TIMESTAMP` |
+All IDs and foreign-key IDs are PostgreSQL `text`; application-created user, API-key, and linked-account IDs use UUID strings. All timestamp columns are `timestamp with time zone`, returned as strings by Drizzle. Columns are required unless marked nullable. Timestamp creation defaults use `now()`.
 
-## API_KEYS
+## users
 
-One-time keys for linking bot accounts to users.
+| Column        | Type        | Notes           |
+| ------------- | ----------- | --------------- |
+| id            | text        | Primary key     |
+| email         | text        | Unique          |
+| password_hash | text        | bcrypt hash     |
+| name          | text        | Display name    |
+| created_at    | timestamptz | Default `now()` |
 
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid | PK |
-| user_id | uuid | FK → USERS (cascade delete) |
-| key_hash | string | HMAC-SHA256, never store plaintext |
-| key_hint | string | `ek_****a1b2`, shown in dashboard |
-| label | string | optional, e.g. "telegram link" |
-| created_at | timestamp | `CURRENT_TIMESTAMP` |
-| last_used_at | timestamp | nullable, set on first use |
-| revoked_at | timestamp | nullable, set on revoke |
+## api_keys
 
-## LINKED_ACCOUNTS
+Single-use account-linking keys, not general API bearer credentials.
 
-One row per platform connection. Unique on `(platform, platform_user_id)`.
+| Column       | Type        | Notes                                              |
+| ------------ | ----------- | -------------------------------------------------- |
+| id           | text        | Primary key                                        |
+| user_id      | text        | FK to users; cascade delete                        |
+| key_hash     | text        | HMAC-SHA256 hash; indexed, not a unique constraint |
+| key_hint     | text        | Example: `ek_****a1b2`                             |
+| label        | text        | Nullable                                           |
+| created_at   | timestamptz | Default `now()`                                    |
+| expires_at   | timestamptz | Required; service sets expiry at issuance          |
+| last_used_at | timestamptz | Nullable; set when consumed or burned              |
+| revoked_at   | timestamptz | Nullable                                           |
 
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid | PK |
-| user_id | uuid | FK → USERS (cascade delete) |
-| platform | string | `telegram` / `discord` / etc. |
-| platform_user_id | string | platform's account id |
-| platform_username | string | nullable, display only |
-| linked_at | timestamp | `CURRENT_TIMESTAMP` |
+## linked_accounts
 
-## CATEGORIES
+Unique on `(platform, platform_user_id)`; indexed on `user_id`.
 
-Fixed, global predefined list. Seed one row as `"Uncategorized"`.
+| Column            | Type        | Notes                                     |
+| ----------------- | ----------- | ----------------------------------------- |
+| id                | text        | Primary key                               |
+| user_id           | text        | FK to users; cascade delete               |
+| platform          | text        | Telegram is implemented; no database enum |
+| platform_user_id  | text        | Platform account ID                       |
+| platform_username | text        | Nullable, display only                    |
+| linked_at         | timestamptz | Default `now()`                           |
 
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid | PK |
-| name | string | e.g. "Food", "Transport" |
-| slug | string | e.g. "food" |
+## categories
 
-## MESSAGES
+Schema only: no seed workflow currently populates this table. The expense parser uses a hardcoded category list.
 
-Raw log of every incoming message. One message can produce multiple expenses.
+| Column | Type | Notes                 |
+| ------ | ---- | --------------------- |
+| id     | text | Primary key           |
+| name   | text | Category display name |
+| slug   | text | Unique                |
 
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid | PK |
-| user_id | uuid | FK → USERS |
-| linked_account_id | uuid | FK → LINKED_ACCOUNTS, nullable |
-| raw_text | text | exact original message |
-| external_message_id | string | nullable, unique per platform |
-| parse_status | string | `success` / `partial` / `failed` |
-| received_at | timestamp | `CURRENT_TIMESTAMP` |
+## messages
 
-## EXPENSES
+Schema for raw messages; runtime message writes are not implemented. Indexed on `user_id` and `linked_account_id`.
 
-Parsed line items. Multiple rows per message.
+| Column              | Type        | Notes                                                     |
+| ------------------- | ----------- | --------------------------------------------------------- |
+| id                  | text        | Primary key                                               |
+| user_id             | text        | FK to users; cascade delete                               |
+| linked_account_id   | text        | Nullable FK to linked_accounts; set null on delete        |
+| raw_text            | text        | Original message text                                     |
+| external_message_id | text        | Nullable; globally unique, not scoped by platform or chat |
+| parse_status        | text        | Free text; no CHECK constraint or enum                    |
+| received_at         | timestamptz | Default `now()`                                           |
 
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid | PK |
-| message_id | uuid | FK → MESSAGES, nullable |
-| user_id | uuid | FK → USERS (denormalized) |
-| category_id | uuid | FK → CATEGORIES, nullable |
-| item_name | string | e.g. "Baso" |
-| amount | decimal | e.g. 25000 |
-| currency | string | default `IDR` |
-| expense_date | date | date only, no time |
-| note | string | optional |
-| created_at | timestamp | `CURRENT_TIMESTAMP` |
-| updated_at | timestamp | `CURRENT_TIMESTAMP` |
+Before implementing message ingestion, define how platform/chat-scoped message IDs map to the globally unique `external_message_id`.
+
+## expenses
+
+Schema supports multiple expenses per message; the current parser returns one object and does not insert it. Indexes cover `(user_id, expense_date)`, `message_id`, and `category_id`.
+
+| Column       | Type          | Notes                                                               |
+| ------------ | ------------- | ------------------------------------------------------------------- |
+| id           | text          | Primary key                                                         |
+| message_id   | text          | Nullable FK to messages; set null on delete                         |
+| user_id      | text          | FK to users; cascade delete                                         |
+| category_id  | text          | Nullable FK to categories; set null on delete                       |
+| item_name    | text          | Item description                                                    |
+| amount       | numeric(20,2) | Exact decimal string in Drizzle; 18 integer and 2 fractional digits |
+| currency     | text          | Default `IDR`; no currency CHECK constraint                         |
+| expense_date | date          | Date-only string                                                    |
+| note         | text          | Nullable                                                            |
+| created_at   | timestamptz   | Default `now()`                                                     |
+| updated_at   | timestamptz   | Default `now()` on insert; no automatic update trigger              |
+
+PostgreSQL rounds excess fractional precision in `amount`; the schema does not enforce a positive amount. Parser validation requires a positive number, but future persistence must also validate its inputs.

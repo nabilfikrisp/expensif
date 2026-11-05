@@ -1,148 +1,239 @@
 {
   "info": {
     "_postman_id": "488f7fc1-3fcc-462b-a211-b5122c725ae2",
-    "name": "expensif",
+    "name": "Expensif API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "_exporter_id": "49636917"
+    "description": "Local API requests. Register or log in first; the collection captures accessToken. Keep the cookie jar enabled for refresh. API keys are only for Telegram linking. Logout clears cookies but does not revoke JWTs."
   },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "apiKeyId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "linkedAccountId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (pm.response.code >= 200 && pm.response.code < 300) {",
+          "  const body = pm.response.json();",
+          "  if (body.data && body.data.accessToken) { pm.collectionVariables.set(\"accessToken\", body.data.accessToken); }",
+          "  if (body.data && body.data.key) { pm.collectionVariables.set(\"apiKeyId\", body.data.id); }",
+          "}"
+        ]
+      }
+    }
+  ],
   "item": [
     {
-      "name": "auth",
+      "name": "Auth",
       "item": [
         {
-          "name": "http://localhost:3000/v1/api/auth/register",
+          "name": "Register",
           "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/register",
             "auth": {
               "type": "noauth"
             },
-            "method": "POST",
-            "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\r\n    \"email\": \"nabil@gmail.com\",\r\n    \"password\": \"12345678\",\r\n    \"name\": \"nabil\"\r\n}",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"example-password-123\",\n  \"name\": \"Example User\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
-            },
-            "url": {
-              "raw": "http://localhost:3000/api/v1/auth/register",
-              "protocol": "http",
-              "host": [
-                "localhost"
-              ],
-              "port": "3000",
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "register"
-              ]
             }
           },
           "response": []
         },
         {
-          "name": "http://localhost:3000/api/v1/auth/login",
+          "name": "Login",
           "request": {
             "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "{\r\n    \"email\": \"nabil@gmail.com\",\r\n    \"password\": \"12345678\"\r\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "http://localhost:3000/api/v1/auth/login",
-              "protocol": "http",
-              "host": [
-                "localhost"
-              ],
-              "port": "3000",
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "login"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "http://localhost:3000/api/v1/auth/refresh",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "http://localhost:3000/api/v1/auth/refresh",
-              "protocol": "http",
-              "host": [
-                "localhost"
-              ],
-              "port": "3000",
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "refresh"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "http://localhost:3000/api/v1/auth/me",
-          "request": {
-            "method": "GET",
             "header": [
               {
-                "key": "Authorization",
-                "value": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkNTYxY2U2OC1jZGU3LTRhZDYtYjc3NC0wM2EzYmVmZDk4NjEiLCJleHAiOjE3ODU0MDgzMjAsImlhdCI6MTc4NTQwNzQyMH0.pIOUD4PAcrB0erPmvznuy0Nvn4FthhFMYhrfkRIrtgM",
-                "type": "text"
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
-            "url": {
-              "raw": "http://localhost:3000/api/v1/auth/me",
-              "protocol": "http",
-              "host": [
-                "localhost"
-              ],
-              "port": "3000",
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "me"
-              ]
+            "url": "{{baseUrl}}/api/v1/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"example-password-123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           },
           "response": []
         },
         {
-          "name": "http://localhost:3000/api/v1/auth/logout",
+          "name": "Refresh",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/refresh",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const csrf = pm.cookies.get(\"csrf_token\");",
+                  "if (!csrf) { throw new Error(\"Log in first and enable the Postman cookie jar.\"); }",
+                  "pm.variables.set(\"csrfToken\", csrf);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Current user",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/auth/me"
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
           "request": {
             "method": "POST",
             "header": [],
-            "url": {
-              "raw": "http://localhost:3000/api/v1/auth/logout",
-              "protocol": "http",
-              "host": [
-                "localhost"
-              ],
-              "port": "3000",
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "logout"
-              ]
+            "url": "{{baseUrl}}/api/v1/auth/logout",
+            "auth": {
+              "type": "noauth"
             }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "API keys",
+      "item": [
+        {
+          "name": "Generate key",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/api-key",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"telegram link\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List keys",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/api-key?status=all&page=1&limit=10"
+          },
+          "response": []
+        },
+        {
+          "name": "Revoke key",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/api-key/{{apiKeyId}}"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete key",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/api-key/{{apiKeyId}}"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Linked accounts",
+      "item": [
+        {
+          "name": "List linked accounts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/linked-account"
+          },
+          "response": []
+        },
+        {
+          "name": "Unlink account",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/linked-account/{{linkedAccountId}}"
           },
           "response": []
         }

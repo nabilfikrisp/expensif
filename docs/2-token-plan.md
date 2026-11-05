@@ -1,55 +1,29 @@
-# Server-Side Token Revocation on Logout
+# Server-side token revocation on logout
 
-## Goal
+Status: proposed, not implemented. There is no revocation column, session table, or revocation cache in the current codebase.
 
-Immediately invalidate access tokens on logout (instead of waiting up to 15min expiry).
+## Current behavior
 
-## Approach
+Logout clears the refresh and CSRF cookies. Access and refresh JWTs remain cryptographically valid until expiry. Refresh issues tokens again without invalidating the previous refresh JWT.
 
-Per-user `token_valid_after` timestamp in SQLite + in-memory cache. Checked in `authMiddleware`.
+## Proposed behavior
 
----
+Invalidate all sessions for a user on logout. A per-user revocation timestamp in PostgreSQL could be checked by both access-token middleware and refresh. Per-device logout would require a session-based design instead.
 
-## Data Model
+Before implementation, resolve timestamp precision: JWT `iat` has second precision, so a strict timestamp cutoff can also reject a login issued in the same second as logout. Also define behavior for concurrent login/logout and deleted users.
 
-```sql
-ALTER TABLE users ADD COLUMN token_valid_after text NOT NULL DEFAULT '1970-01-01T00:00:00.000Z';
-```
+Start with database-backed checks. Add caching only if measured traffic requires it, with invalidation across all server processes; a per-process cache alone cannot guarantee immediate revocation everywhere. Do not report successful server-side revocation if its database write fails.
 
-Tokens valid only if `iat > token_valid_after`. On logout, set `token_valid_after = now()`.
+## Migration and acceptance criteria
 
-> "Logout everywhere" — all sessions invalidated. Per-device requires `sessions` table (out of scope).
+Any schema change must use Drizzle generate + migrate and include a committed PostgreSQL migration. Do not apply the old SQLite SQL or use schema push.
 
-## In-Memory Cache
+Required scenarios for the future implementation:
 
-`server/src/pkg/cache/token-valid-after.ts` — `Map<string, { value, expiresAt }>` with TTL.
+- Logout rejects previously issued access and refresh tokens.
+- Missing or expired cookies still permit clearing browser cookies.
+- A fresh login after logout works, including same-second issuance.
+- Concurrent requests and multiple server processes observe the defined revocation behavior.
+- Database failure does not silently claim successful revocation.
 
-- `get(userId)` — cache or null on miss
-- `set(userId, value)` — store with TTL
-- `invalidate(userId)` — delete entry
-
-## Changes
-
-| File | Change |
-|------|--------|
-| `auth/service.ts` | Add `getTokenValidAfter`, `setTokenValidAfter`, revocation check in `refresh` |
-| `auth/error.ts` | Add `tokenRevoked()` → 401 |
-| `auth/controllers/middleware.ts` | Check `iat <= token_valid_after` after verification |
-| `auth/controllers/http/logout.ts` | Read refresh cookie → set `token_valid_after` → clear cookie |
-| `auth/controllers/http/index.ts` | Pass `authService` + `refreshSecret` to logout route |
-
-**Logout uses refresh token** (not access token) to identify user — access token may be expired.
-
-## Edge Cases
-
-- **Clock skew:** `<=` comparison — token issued same second as logout is revoked
-- **Cache:** In-memory Map, can't fail. DB write failure → log and continue
-- **Concurrent logout:** Acceptable race — no data corruption
-- **Expired refresh at logout:** Clear cookie, return 200
-
-## Testing
-
-- Middleware rejects tokens with `iat <= token_valid_after`
-- Login → use token → logout → same token returns 401
-- Refresh token also rejected post-logout
-- Logout with expired/missing cookie returns 200
+This proposal does not authorize or imply that these changes have been shipped.

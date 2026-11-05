@@ -8,24 +8,32 @@ const REQUEST_LOG_LEVEL: Record<number, "error" | "warn" | "info"> = {
   4: "warn",
   5: "error",
 };
-const SENSITIVE_PATTERNS = [
-  {
-    pattern: /eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,
-    replacement: "[REDACTED]",
-  },
-  {
-    pattern: /"(accessToken|refreshToken|password|token|authorization)":\s*"[^"]*"/g,
-    replacement: '"$1":"[REDACTED]"',
-  },
-];
+const SENSITIVE_FIELDS = new Set([
+  "accesstoken",
+  "refreshtoken",
+  "password",
+  "token",
+  "authorization",
+  "key",
+  "cookie",
+  "set-cookie",
+  "x-csrf-token",
+]);
 
 function sanitize(obj: unknown): unknown {
-  const json = JSON.stringify(obj);
-  const redacted = SENSITIVE_PATTERNS.reduce(
-    (str, { pattern, replacement }) => str.replace(pattern, replacement),
-    json
+  return JSON.parse(
+    JSON.stringify(obj, (key, value: unknown) => {
+      if (SENSITIVE_FIELDS.has(key.toLowerCase())) {
+        return "[REDACTED]";
+      }
+      return typeof value === "string"
+        ? value.replace(
+            /eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+|ek_[a-f0-9]{32}/g,
+            "[REDACTED]"
+          )
+        : value;
+    })
   );
-  return JSON.parse(redacted);
 }
 
 function truncate(value: string) {

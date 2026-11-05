@@ -15,6 +15,9 @@ export interface InitBotParams {
 export function initBot({ token, logger, expenseService, linkedAccountUseCase }: InitBotParams) {
   // orders matters for command and message
   const bot = new Bot(token);
+  bot.catch((err) => {
+    logger.error({ err: err.error, updateId: err.ctx.update.update_id }, "Bot update failed");
+  });
 
   registerExpenseCommands(bot, logger, expenseService);
   registerLinkCommand(bot, logger, linkedAccountUseCase);

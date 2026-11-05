@@ -29,6 +29,7 @@ function refreshCookieOptions(env: EnvSchema): CookieOptions {
 function csrfCookieOptions(env: EnvSchema): CookieOptions {
   return {
     ...baseCookieOptions(env),
+    path: "/",
     maxAge: 7 * 86400,
   };
 }
@@ -48,10 +49,13 @@ export function initCookieJar(env: EnvSchema) {
 
     setCsrfCookie: (c: Context, token: string) => {
       setCookie(c, CSRF_TOKEN_COOKIE, token, csrfOpts);
+      // Remove the old API-scoped cookie so it cannot shadow the dashboard cookie.
+      deleteCookie(c, CSRF_TOKEN_COOKIE, { path: AUTH_PATH });
     },
     getCsrfCookie: (c: Context) => getCookie(c, CSRF_TOKEN_COOKIE),
     clearCsrfCookie: (c: Context) => {
       deleteCookie(c, CSRF_TOKEN_COOKIE, { path: csrfOpts.path });
+      deleteCookie(c, CSRF_TOKEN_COOKIE, { path: AUTH_PATH });
     },
   };
 }
