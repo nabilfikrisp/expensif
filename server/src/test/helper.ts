@@ -1,5 +1,6 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
 
+import { initApiKeyRoutes } from "@/modules/api-key/controllers/http";
 import { initApiKeyService } from "@/modules/api-key/service";
 import { initAuthRoutes } from "@/modules/auth/controllers/http";
 import { initAuthMiddleware } from "@/modules/auth/controllers/middleware";
@@ -123,9 +124,17 @@ function buildApp(env: EnvSchema, db: Db) {
     authMiddleware,
     rateLimiters,
   });
-  const app = initHttp(env, logger, [{ prefix: "auth", app: authRoutes }], {
-    defaultLimiter: rateLimiters.default,
-  });
+  const app = initHttp(
+    env,
+    logger,
+    [
+      { prefix: "auth", app: authRoutes },
+      { prefix: "api-key", app: initApiKeyRoutes(apiKeyService, authMiddleware) },
+    ],
+    {
+      defaultLimiter: rateLimiters.default,
+    }
+  );
 
   return {
     app,

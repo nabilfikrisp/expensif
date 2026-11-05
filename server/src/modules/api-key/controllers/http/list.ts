@@ -6,7 +6,7 @@ import { apiKeyRespSchema } from "@/modules/api-key/zod-schema";
 import type { AuthMiddleware } from "@/modules/auth/controllers/middleware";
 import { errorRespSchema, paginatedRespSchema } from "@/shared/response.schema";
 
-const listApiKeysRespSchema = paginatedRespSchema(apiKeyRespSchema);
+export const listApiKeysRespSchema = paginatedRespSchema(apiKeyRespSchema);
 
 interface ListApiKeysRouteDeps {
   apiKeyService: ApiKeyService;

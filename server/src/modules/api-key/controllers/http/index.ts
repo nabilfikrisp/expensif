@@ -9,6 +9,7 @@ import { initRevokeApiKeyRoute } from "./revoke";
 import { ApiKeyError } from "@/modules/api-key/error";
 import type { ApiKeyService } from "@/modules/api-key/service";
 import type { AuthMiddleware } from "@/modules/auth/controllers/middleware";
+import { AuthError } from "@/modules/auth/error";
 
 export function initApiKeyRoutes(apiKeyService: ApiKeyService, authMiddleware: AuthMiddleware) {
   const app = new OpenAPIHono();
@@ -26,7 +27,7 @@ export function initApiKeyRoutes(apiKeyService: ApiKeyService, authMiddleware: A
   app.route("/", deleteApiKeyRoute);
 
   app.onError((err, c) => {
-    if (err instanceof ApiKeyError) {
+    if (err instanceof ApiKeyError || err instanceof AuthError) {
       return c.json(
         {
           success: false,

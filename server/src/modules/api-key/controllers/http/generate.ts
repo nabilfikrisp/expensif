@@ -11,7 +11,7 @@ const generateApiKeyReqSchema = z
   })
   .openapi("GenerateApiKeyBody");
 
-const generateApiKeyRespSchema = successRespSchema
+export const generateApiKeyRespSchema = successRespSchema
   .extend({
     data: apiKeyRespSchema.extend({ key: z.string() }).omit({ lastUsedAt: true, revokedAt: true }),
   })
