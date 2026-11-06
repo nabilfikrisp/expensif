@@ -11,7 +11,7 @@ This document defines the layering rules and holds maintainer rationale for them
 
 These rules apply now. Future improvements require a maintainer decision; they are not implementation shortcuts.
 
-1. Assemble dependencies through `init*` factories in the [composition root](../server/src/index.ts). Pass service and database instances as dependencies; do not import instances directly from other files. Type imports and factory imports are allowed.
+1. Assemble dependencies through `init*` factories in the [application assembly](../server/src/app.ts) and [startup entry point](../server/src/index.ts). Pass service and database instances as dependencies; do not import instances directly from other files. Type imports and factory imports are allowed.
 2. Controllers own transport: validation, authentication middleware, and responses. Services own operations.
 3. A use case owns a transaction spanning several services. The current example is [linked-account/use-case.ts](../server/src/modules/linked-account/use-case.ts).
 4. Domain errors carry machine-readable codes and are mapped at the route boundary. Unknown errors propagate; see the [API-key route boundary](../server/src/modules/api-key/controllers/http/index.ts).
