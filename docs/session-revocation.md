@@ -37,18 +37,12 @@ The refresh session expires 2 hours after login. Refreshing access tokens does n
 - Concurrent refresh/logout behavior and handling of deleted users.
 - Session-table fields and constraints; no schema design is approved by this document.
 
-These are unresolved implementation details, not authorization for agents to choose policies. Do not report successful revocation if its database write fails.
+These open questions do not authorize agents to choose policies.
 
 ## Migration and acceptance criteria
 
-Schema changes follow the [migration rules](../AGENTS.md#hard-rules) and include [committed PostgreSQL migrations](../server/src/pkg/db/migrations/).
+Additional acceptance requirements:
 
-Required scenarios for the future implementation:
-
-- After successful logout, refresh tokens associated with the current session cannot obtain new access tokens.
-- An otherwise-valid access JWT issued before logout remains accepted until expiry, then is rejected.
-- Access JWTs expire 5 minutes after issuance. Refresh tokens cannot refresh at or after the session's fixed 2-hour deadline, including after repeated refreshes or refresh-token replacement.
-- Logging out one session leaves another session for the same user able to refresh.
 - Missing or expired cookies still permit clearing browser cookies.
 - A fresh login after logout creates an independent usable session, including same-second login.
 - Concurrent requests and multiple server processes observe the defined revocation behavior.

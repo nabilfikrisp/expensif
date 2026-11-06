@@ -14,7 +14,6 @@ This document defines the intended expense-tracking experience and its scope.
 Expensif is a multi-user expense tracker. Users send natural-language expense messages to a bot, then view and correct their expenses in a web dashboard or through the bot.
 
 - Users register through the application and link a bot account using a short-lived, single-use API key. A linking key is not a general API bearer credential.
-- Linking establishes account identity. Successful linking alone does not mean that expense storage is available; check [current capability status](status.md#capabilities).
 - Expense commands resolve the linked owner, parse one or more items, and save immediately without a confirmation step.
 - Each user views and corrects their own expenses. Edits overwrite existing values.
 - Fixed global categories classify expenses. Unmatched items use the [chosen fallback category](#why-a-particular-fallback-category).

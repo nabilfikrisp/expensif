@@ -24,7 +24,7 @@ function modelFor(amount: unknown, currency = "IDR", date = "2026-11-07") {
 
 afterEach(() => vi.useRealTimers());
 
-describe("expense locale parsing", () => {
+describe("expense parsing", () => {
   it.each([
     ["15000", "15000"],
     ["15.000", "15000"],
@@ -41,13 +41,21 @@ describe("expense locale parsing", () => {
     ["9007199254740993", "9007199254740993"],
     ["999999999999999999,00", "999999999999999999"],
     ["1.000001jt", "1000001"],
-  ])("normalizes %s exactly to %s rupiah", async (raw, expected) => {
-    const result = await execParseExpense({ model: modelFor(raw) }, `bakso ${raw}`, []);
+  ])("accepts normalized model output %s as %s rupiah", async (raw, expected) => {
+    const result = await execParseExpense({ model: modelFor(expected) }, `bakso ${raw}`, []);
     expect(result.amount).toBe(expected);
     expect(result.currency).toBe("IDR");
   });
 
   it.each([
+    "",
+    "01",
+    " 15000",
+    "15000 ",
+    "15000\n",
+    "15k",
+    "1,5jt",
+    "15.000",
     "0",
     "-1",
     "NaN",
@@ -73,18 +81,6 @@ describe("expense locale parsing", () => {
     }
   );
 
-  it.each([
-    ["15000", "15k"],
-    ["15", "15k"],
-    ["1", "1,5"],
-    ["5", "1,5"],
-    ["1", "-1"],
-  ])("rejects rewritten or partial amount %s from %s", async (extracted, source) => {
-    await expect(
-      execParseExpense({ model: modelFor(extracted) }, `bakso ${source}`, [])
-    ).rejects.toThrow("verbatim");
-  });
-
   it("accepts an amount followed by sentence punctuation", async () => {
     const result = await execParseExpense({ model: modelFor("15000") }, "bakso 15000.", []);
     expect(result.amount).toBe("15000");
@@ -104,11 +100,14 @@ describe("expense locale parsing", () => {
         : instant.includes("16:59")
           ? "2026-11-06"
           : "2026-11-07";
-      const model = modelFor("15k", "IDR", today);
+      const model = modelFor("15000", "IDR", today);
       await execParseExpense({ model }, "bakso 15k kemarin", []);
       const system = model.doGenerateCalls[0].prompt.find((message) => message.role === "system");
       expect(system?.content).toContain(`Today is ${today} in Asia/Jakarta.`);
       expect(system?.content).toContain('"kemarin"');
+      expect(system?.content).toContain('"15k" become "15000"');
+      expect(system?.content).toContain('"1,5jt" become "1500000"');
+      expect(system?.content).toContain("never a JSON number");
     }
   );
 });

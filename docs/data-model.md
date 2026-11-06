@@ -7,93 +7,36 @@ updated: 2026-11-06
 
 > TARGET. Describes what is intended, not what runs. Actual behavior: [status.md](status.md) and the code.
 
-This document describes the intended storage model and its unresolved constraints.
+This document records intended data relationships, constraints, and unresolved storage decisions.
 
-The model carries forward the previous ERD as a target baseline. It does not establish implemented behavior. Actual definitions live in the [domain schemas](../server/src/modules/) and [committed migrations](../server/src/pkg/db/migrations/); known differences and undecided constraint policies are recorded only in [status](status.md#target-vs-actual).
-
-IDs and foreign-key IDs use PostgreSQL `text`; application-created user, API-key, and linked-account IDs use UUID strings. Timestamps use `timestamp with time zone`, represented as strings in Drizzle. Columns are required unless marked nullable. Creation timestamps default to `now()`.
+Column definitions live in the [domain schemas](../server/src/modules/); database changes live in [migrations](../server/src/pkg/db/migrations/).
 
 ## users
 
-| Column        | Type        | Notes           |
-| ------------- | ----------- | --------------- |
-| id            | text        | Primary key     |
-| email         | text        | Unique          |
-| password_hash | text        | bcrypt hash     |
-| name          | text        | Display name    |
-| created_at    | timestamptz | Default `now()` |
+Users own their API keys, linked accounts, messages, and expenses. Deleting a user deletes that owned data.
 
 ## api_keys
 
-Short-lived, single-use account-linking keys, rather than general API bearer credentials.
-
-| Column       | Type        | Notes                           |
-| ------------ | ----------- | ------------------------------- |
-| id           | text        | Primary key                     |
-| user_id      | text        | FK to users; cascade delete     |
-| key_hash     | text        | HMAC-SHA256 hash; indexed       |
-| key_hint     | text        | Masked display hint             |
-| label        | text        | Nullable                        |
-| created_at   | timestamptz | Default `now()`                 |
-| expires_at   | timestamptz | Expiry set at issuance          |
-| last_used_at | timestamptz | Nullable; consumption timestamp |
-| revoked_at   | timestamptz | Nullable; revocation timestamp  |
+Short-lived, single-use account-linking credentials, distinct from API access tokens. Revoking or deleting a key does not unlink an existing account.
 
 ## linked_accounts
 
-Unique on `(platform, platform_user_id)`; indexed on `user_id`. Platform usernames are display information, not identities.
-
-| Column            | Type        | Notes                       |
-| ----------------- | ----------- | --------------------------- |
-| id                | text        | Primary key                 |
-| user_id           | text        | FK to users; cascade delete |
-| platform          | text        | Platform identifier         |
-| platform_user_id  | text        | Platform account ID         |
-| platform_username | text        | Nullable                    |
-| linked_at         | timestamptz | Default `now()`             |
+An external account is identified by platform and platform user ID; usernames are display information. Unlinking preserves historical messages and their external source identity.
 
 ## categories
 
-Global categories classify expenses.
-
-| Column | Type | Notes        |
-| ------ | ---- | ------------ |
-| id     | text | Primary key  |
-| name   | text | Display name |
-| slug   | text | Unique       |
+Categories are global. The fallback follows the [product decision](product-intent.md#why-a-particular-fallback-category). Deleting a category preserves its expenses.
 
 ## messages
 
-Raw messages may produce multiple expenses. Indexes cover `user_id` and `linked_account_id`. External messages are unique on `(platform, external_chat_id, external_message_id)`, independently of the nullable linked-account reference. Duplicate deliveries must not create additional expenses.
+Preserve the original message text. One message may produce multiple expenses. External source identity consists of platform, chat, and message ID, independently of the linked-account reference. Duplicate deliveries must not create additional expenses. Deleting a message preserves its expenses.
 
-| Column              | Type        | Notes                                                                           |
-| ------------------- | ----------- | ------------------------------------------------------------------------------- |
-| id                  | text        | Primary key                                                                     |
-| user_id             | text        | FK to users; cascade delete                                                     |
-| linked_account_id   | text        | Nullable FK to linked_accounts; set null on delete                              |
-| raw_text            | text        | Original message text                                                           |
-| platform            | text        | External platform identifier; part of source identity                            |
-| external_chat_id    | text        | External chat or channel identifier; part of source identity                     |
-| external_message_id | text        | Nullable; part of the composite external message identity                        |
-| parse_status        | text        | Parsing state; allowed values remain undefined                                  |
-| received_at         | timestamptz | Default `now()`                                                                 |
+Allowed parsing states remain undefined.
 
 ## expenses
 
-Multiple expenses can belong to one message. Indexes cover `(user_id, expense_date)`, `message_id`, and `category_id`. Application validation and database constraints must enforce positive, finite, whole-rupiah amounts and `IDR` currency. Use unconstrained `numeric` storage with CHECK constraints so fractional input is rejected without scale coercion rounding it first. Application amounts use exact decimal strings.
+Each expense belongs to a user and may reference a source message and category. Application validation and database constraints must enforce positive, finite, whole-rupiah amounts; reject fractional input without rounding. Currency and display conventions follow the [currency policy](product-intent.md#why-a-particular-currency-policy).
 
-| Column       | Type          | Notes                                                                                            |
-| ------------ | ------------- | ------------------------------------------------------------------------------------------------ |
-| id           | text          | Primary key                                                                                      |
-| message_id   | text          | Nullable FK to messages; set null on delete                                                      |
-| user_id      | text          | FK to users; cascade delete                                                                      |
-| category_id  | text          | Nullable FK to categories; set null on delete                                                    |
-| item_name    | text          | Item description                                                                                 |
-| amount       | numeric       | Exact normalized amount; follows the [amount policy](product-intent.md#why-a-particular-currency-policy) |
-| currency     | text          | Default `IDR`; follows the [currency policy](product-intent.md#why-a-particular-currency-policy) |
-| expense_date | date          | Date-only string, separate from timestamps                                                       |
-| note         | text          | Nullable                                                                                         |
-| created_at   | timestamptz   | Default `now()`                                                                                  |
-| updated_at   | timestamptz   | Default `now()` on insert; update maintenance must be defined when edits are implemented         |
+Expense dates are separate from creation/update timestamps. Relative dates follow the [timezone policy](product-intent.md#why-a-particular-timezone-policy). Update-timestamp maintenance remains to be defined when editing is implemented.
 
-Retention policy is [open](product-intent.md#why-a-particular-retention-policy). This model does not add revocation columns or a session table: [session revocation](session-revocation.md) is still a proposal. Schema changes follow the [migration rules](../AGENTS.md#hard-rules).
+Retention remains [open](product-intent.md#why-a-particular-retention-policy). The [session proposal](session-revocation.md) does not yet approve a session-table design.

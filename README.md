@@ -2,12 +2,6 @@
 
 Expense tracking backend built with TypeScript, Hono, PostgreSQL 17, Drizzle, and a Telegram bot. Natural-language parsing uses the AI SDK through OpenRouter.
 
-## Current status
-
-- Implemented: email/password authentication, JWT refresh, API-key management, and Telegram account linking.
-- Prototype: `/expense <description>` parses and displays one expense. It does not save messages or expenses, require a linked account, or support multiple items.
-- Planned: expense persistence, expense APIs, a web dashboard, corrections, and Discord support. There is no client application yet.
-
 ## Local setup
 
 Use a current Node.js LTS release (Node.js 24 recommended), pnpm 11.9+, and Docker with Compose v2. Run these commands from the repository root:
@@ -62,11 +56,11 @@ pnpm db:test:down
 pnpm db:dev:up
 ```
 
-The test helper uses a fixed local test URL, verifies the database and role, applies committed migrations in global setup, and truncates application tables between tests. Test data is ephemeral; development data lives in a named Docker volume. Tests do not require real Telegram or OpenRouter credentials. Root `pnpm test` is a placeholder; use the server command above.
+Tests truncate application tables: use only the dedicated test database. Tests do not require real Telegram or OpenRouter credentials. Use the server test command above; root `pnpm test` is a placeholder.
 
 ## Documentation
 
-- [Server configuration, routes, and architecture](server/README.md)
+- [Server configuration, routes, and commands](server/README.md)
 - [Product intent (target)](docs/product-intent.md)
 - [Implementation status and known gaps](docs/status.md)
 - [Data model (target)](docs/data-model.md)
