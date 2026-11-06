@@ -1,0 +1,173 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "120fc82c-2d03-4665-9922-49012c5a5151",
+  "prevIds": ["16fe865b-bdbe-4152-aacd-b7f4e60882b3"],
+  "footprints": [
+    {
+      "statementType": "drop_unique",
+      "statementTarget": ["table", "public", "messages"],
+      "writes": [
+        "s|uq|public.messages.messages_external_message_id_key",
+        "n|uq|public.messages.messages_external_message_id_key",
+        "e|uq|public.messages.messages_external_message_id_key",
+        "n|con|public.messages.messages_external_message_id_key",
+        "n|rel|public.messages_external_message_id_key"
+      ],
+      "reads": [
+        "n|tbl|public.messages",
+        "n|sch|public",
+        "e|col|public.messages.external_message_id"
+      ],
+      "sharedWrites": ["e|uniqueness|public.messages.external_message_id"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "messages", "platform"],
+      "writes": [
+        "s|col|public.messages.platform",
+        "n|col|public.messages.platform",
+        "e|col|public.messages.platform"
+      ],
+      "reads": ["n|tbl|public.messages", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "messages", "external_chat_id"],
+      "writes": [
+        "s|col|public.messages.external_chat_id",
+        "n|col|public.messages.external_chat_id",
+        "e|col|public.messages.external_chat_id"
+      ],
+      "reads": ["n|tbl|public.messages", "n|sch|public"]
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": ["column", "public", "expenses", "amount"],
+      "writes": [
+        "s|colprop|public.expenses.amount.type",
+        "s|colprop|public.expenses.amount.default"
+      ],
+      "reads": ["n|tbl|public.expenses", "n|sch|public", "n|col|public.expenses.amount"],
+      "sqlHash": "36bd6ee732ed717f"
+    },
+    {
+      "statementType": "add_unique",
+      "statementTarget": ["table", "public", "messages"],
+      "writes": [
+        "s|uq|public.messages.messages_external_source_unique",
+        "n|uq|public.messages.messages_external_source_unique",
+        "e|uq|public.messages.messages_external_source_unique",
+        "n|con|public.messages.messages_external_source_unique",
+        "n|rel|public.messages_external_source_unique"
+      ],
+      "reads": [
+        "n|tbl|public.messages",
+        "n|sch|public",
+        "n|col|public.messages.platform",
+        "n|col|public.messages.external_chat_id",
+        "n|col|public.messages.external_message_id"
+      ]
+    },
+    {
+      "statementType": "add_check",
+      "statementTarget": ["table", "public", "expenses"],
+      "writes": [
+        "s|ck|public.expenses.expenses_amount_positive_finite_whole",
+        "n|ck|public.expenses.expenses_amount_positive_finite_whole",
+        "e|ck|public.expenses.expenses_amount_positive_finite_whole",
+        "n|con|public.expenses.expenses_amount_positive_finite_whole"
+      ],
+      "reads": ["n|tbl|public.expenses", "n|sch|public", "n|col|public.expenses.amount"]
+    },
+    {
+      "statementType": "add_check",
+      "statementTarget": ["table", "public", "expenses"],
+      "writes": [
+        "s|ck|public.expenses.expenses_currency_idr",
+        "n|ck|public.expenses.expenses_currency_idr",
+        "e|ck|public.expenses.expenses_currency_idr",
+        "n|con|public.expenses.expenses_currency_idr"
+      ],
+      "reads": ["n|tbl|public.expenses", "n|sch|public", "n|col|public.expenses.currency"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "messages",
+        "name": "platform",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "messages",
+        "name": "external_chat_id",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "messages",
+        "name": "messages_external_source_unique",
+        "nameExplicit": true,
+        "columns": ["platform", "external_chat_id", "external_message_id"],
+        "nullsNotDistinct": false,
+        "entityType": "uniques"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "expenses",
+        "name": "expenses_amount_positive_finite_whole",
+        "value": "\"amount\" > 0 AND \"amount\" < 'Infinity'::numeric AND \"amount\" = trunc(\"amount\")",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "expenses",
+        "name": "expenses_currency_idr",
+        "value": "\"currency\" = 'IDR'",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "drop",
+      "key": "uniques\u0000[\"public\",\"messages\",\"messages_external_message_id_key\"]"
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"expenses\",\"amount\"]",
+      "set": {
+        "type": "numeric"
+      }
+    }
+  ]
+}

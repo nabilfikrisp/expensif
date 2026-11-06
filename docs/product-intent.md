@@ -18,7 +18,7 @@ Expensif is a multi-user expense tracker. Users send natural-language expense me
 - Expense commands resolve the linked owner, parse one or more items, and save immediately without a confirmation step.
 - Each user views and corrects their own expenses. Edits overwrite existing values.
 - Fixed global categories classify expenses. Unmatched items use the [chosen fallback category](#why-a-particular-fallback-category).
-- An expense date is separate from creation and update timestamps, supporting day/month grouping. Relative dates use the user's timezone.
+- An expense date is separate from creation and update timestamps, supporting day/month grouping. Relative dates follow the [timezone policy](#why-a-particular-timezone-policy).
 - Generic platform and platform-user identities support Telegram and future Discord integration.
 
 ## Initial scope
@@ -35,30 +35,36 @@ Decisions and remaining questions are not assigned work. Only the maintainer dec
 
 ### Why a particular currency policy
 
-Decision: Support only Indonesian rupiah (`IDR`) for now. Amount-unit conventions remain undecided.
+Decision: Support only whole-rupiah (`IDR`) amounts. Use Indonesian number conventions (`15.000` means fifteen thousand) and expand shorthand such as `15k` and `1.5jt`; reject fractional rupiah. Store normalized amounts and currency; preserve original messages. The frontend handles display formatting with `id-ID` and `IDR`.
 
-Reason: because currently its only for me, and my daily is in rupiah, so for now the system only support rupiah
+Reason: The application is currently developed for my personal use, and my daily expenses are in rupiah. IDR-only support and whole-rupiah amounts meet my current needs.
 
 ### Why a particular timezone policy
 
-Decision: The target uses the user's timezone; how it is chosen, stored, and handled when absent remains undecided.
+Decision: Use the fixed application timezone `Asia/Jakarta` for now, rather than per-user timezone settings. Interpret relative expense dates in this timezone. Expense dates remain date-only values; stored timestamps still represent instants.
 
-Reason: the same reason as above
+Reason: The application is currently developed for my personal use, so a fixed `Asia/Jakarta` timezone meets my current needs.
+
+### Why Indonesian frontend wording
+
+Decision: Write frontend wording in Indonesian, aligned with the currency and timezone policies above. Repository documentation remains in English.
+
+Reason: Indonesian frontend wording keeps the interface consistent with the rupiah currency and Jakarta timezone choices.
 
 ### Why a particular fallback category
 
 Decision: Use a category named `other` as the fallback. This supersedes the earlier “uncategorized” wording; implementation gaps remain in [status](status.md#target-vs-actual).
 
-Reason: the fallback will be category named other
+Reason: The fallback category is named `other`.
 
 ### Why a particular logout scope
 
 Decision: Use short-lived access JWTs and server-tracked refresh sessions. Logout revokes only the current refresh session and clears cookies; other sessions remain active. Already-issued access JWTs remain usable until expiry, and ordinary API requests do not look up session state.
 
-Reason: the logout should only be for one device, and i think if we store jwt in db that mean we are fighting jwt convention
+Reason: Logout should affect only the current device. I prefer to preserve stateless access-JWT validation rather than track access tokens in the database.
 
 ### Why a particular retention policy
 
 Decision: Message and expense retention periods remain undecided.
 
-Reason: i havent have the exact problem with this, will investigate later
+Reason: I have not yet encountered a concrete retention problem. I will revisit this when the need becomes clear.

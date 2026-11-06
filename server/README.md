@@ -58,7 +58,9 @@ Import the [Postman collection](../docs/expensif.postman_collection.json). Set `
 
 - `/start`: welcome message.
 - `/link <key>`: links the sender's Telegram account to the key owner in a private chat. Keys pasted in non-private chats are revoked without linking or changing their usage timestamp. The original message is not deleted.
-- `/expense <description>`: asks the LLM for one structured expense and displays it. No persistence or linked-account authorization yet. Dates use the current UTC date; user timezones are not implemented.
+- `/expense <description>`: asks the LLM for one structured expense and displays it. No persistence or linked-account authorization yet. Relative dates use the current date in `Asia/Jakarta`.
+
+Amount and display conventions follow the [currency policy](../docs/product-intent.md#why-a-particular-currency-policy).
 
 Unhandled update errors are logged by `bot.catch` so subsequent updates can continue. A rejected `bot.start()` is logged and terminates the process with exit code 1, stopping HTTP as well. Retry-delay cancellation during intentional bot shutdown is ignored. The running message is logged only after bot initialization succeeds.
 

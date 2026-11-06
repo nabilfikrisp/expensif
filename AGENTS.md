@@ -4,8 +4,9 @@ This file routes repository work and defines mandatory working rules.
 
 ## Hard rules
 
+- Never create git commits. The maintainer strictly reviews all generated code and creates commits personally.
 - Always use pnpm.
-- Never run `drizzle-kit push` or `db:push`. Generate SQL migrations with `drizzle-kit generate`, commit them, then apply with `drizzle-kit migrate`. Never change the database schema directly. If an existing migration covers the change, migrate only; do not regenerate.
+- Never run `drizzle-kit push` or `db:push`. Generate SQL migrations with `drizzle-kit generate`, have the maintainer commit them, then apply with `drizzle-kit migrate`. Never change the database schema directly. If an existing migration covers the change, migrate only; do not regenerate.
 - Tests use real PostgreSQL and truncate application tables: run only against the test database. Development and test databases share host port 5433; never run both together. Setup: [README](README.md#checks-and-tests).
 
 ## Work correctly

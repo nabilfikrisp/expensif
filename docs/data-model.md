@@ -64,7 +64,7 @@ Global categories classify expenses.
 
 ## messages
 
-Raw messages may produce multiple expenses. Indexes cover `user_id` and `linked_account_id`.
+Raw messages may produce multiple expenses. Indexes cover `user_id` and `linked_account_id`. External messages are unique on `(platform, external_chat_id, external_message_id)`, independently of the nullable linked-account reference. Duplicate deliveries must not create additional expenses.
 
 | Column              | Type        | Notes                                                                           |
 | ------------------- | ----------- | ------------------------------------------------------------------------------- |
@@ -72,13 +72,15 @@ Raw messages may produce multiple expenses. Indexes cover `user_id` and `linked_
 | user_id             | text        | FK to users; cascade delete                                                     |
 | linked_account_id   | text        | Nullable FK to linked_accounts; set null on delete                              |
 | raw_text            | text        | Original message text                                                           |
-| external_message_id | text        | Nullable; uniqueness scope remains open in [status](status.md#target-vs-actual) |
+| platform            | text        | External platform identifier; part of source identity                            |
+| external_chat_id    | text        | External chat or channel identifier; part of source identity                     |
+| external_message_id | text        | Nullable; part of the composite external message identity                        |
 | parse_status        | text        | Parsing state; allowed values remain undefined                                  |
 | received_at         | timestamptz | Default `now()`                                                                 |
 
 ## expenses
 
-Multiple expenses can belong to one message. Indexes cover `(user_id, expense_date)`, `message_id`, and `category_id`.
+Multiple expenses can belong to one message. Indexes cover `(user_id, expense_date)`, `message_id`, and `category_id`. Application validation and database constraints must enforce positive, finite, whole-rupiah amounts and `IDR` currency. Use unconstrained `numeric` storage with CHECK constraints so fractional input is rejected without scale coercion rounding it first. Application amounts use exact decimal strings.
 
 | Column       | Type          | Notes                                                                                            |
 | ------------ | ------------- | ------------------------------------------------------------------------------------------------ |
@@ -87,7 +89,7 @@ Multiple expenses can belong to one message. Indexes cover `(user_id, expense_da
 | user_id      | text          | FK to users; cascade delete                                                                      |
 | category_id  | text          | Nullable FK to categories; set null on delete                                                    |
 | item_name    | text          | Item description                                                                                 |
-| amount       | numeric(20,2) | Exact decimal string in Drizzle; 18 integer and 2 fractional digits                              |
+| amount       | numeric       | Exact normalized amount; follows the [amount policy](product-intent.md#why-a-particular-currency-policy) |
 | currency     | text          | Default `IDR`; follows the [currency policy](product-intent.md#why-a-particular-currency-policy) |
 | expense_date | date          | Date-only string, separate from timestamps                                                       |
 | note         | text          | Nullable                                                                                         |

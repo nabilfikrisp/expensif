@@ -43,27 +43,27 @@ These existing exceptions are not patterns to copy or authorization to fix code 
 
 > **FUTURE POSSIBILITY:** Introduce behavioral interfaces between layers so consumers depend on explicit operation contracts rather than concrete service and use-case types such as `ReturnType<typeof initApiKeyService>`. Separate DTOs are established; behavioral interfaces are not yet required.
 
-Reason: Everything is explicit, each layer has its own job, and ownership is clear.
+Reason: Explicit dependencies and distinct layer responsibilities make ownership clear.
 
 ### Why direct imports of service or database instances are forbidden
 
-Reason: Because it violates the rule that each layer has its own responsibility and ownership.
+Reason: Direct imports of service or database instances violate the separation of layer responsibilities and ownership.
 
 ### Why PostgreSQL
 
-Reason: SQLite (libSQL) produced `SQLITE_BUSY` errors and is not suited to a web app; PostgreSQL runs as its own instance.
+Reason: SQLite (libSQL) produced `SQLITE_BUSY` errors and was unsuitable for this web application. PostgreSQL runs as a separate database instance.
 
 ### Why linking uses one transaction
 
 Mechanics: [redeemApiKey](../server/src/modules/linked-account/use-case.ts).
 
-Reason: Linking uses one transaction because it calls three services whose database changes must all roll back if any step fails.
+Reason: Linking calls three services whose database changes must all roll back if any step fails. One transaction keeps those changes atomic.
 
 ### Why consumption locks before checking expiry
 
 Mechanics and comments: `consumeApiKey` in [api-key/service.ts](../server/src/modules/api-key/service.ts).
 
-Reason: Expiry must be checked when consumption can proceed, including any time spent waiting for a lock
+Reason: Expiry must be checked when consumption can proceed, accounting for time spent waiting for the lock.
 
 ### Why the Drizzle release candidate
 
@@ -71,16 +71,16 @@ Reason: The Drizzle release candidate is close to stable, and we expect compatib
 
 ### Why HTTP and Telegram share one process
 
-Reason: It saves on process costs on the VPS.
+Reason: Sharing one process reduces process costs on the VPS.
 
 ### Why an operation requires a use case rather than a service
 
-Reason: An operation only calls/creates a use case when a transaction occurs. A controller may choose to call either a use case or a service, but not both. Once it uses a use case, it continues using use cases.
+Reason: Use cases are introduced for transactional operations. A controller calls either use cases or services, never both; once it uses use cases, its operations continue through that layer.
 
 ### Why bot startup failure must fail the whole process
 
-Reason: Because our app depends on it; the main flow won't work if the bot fails to start.
+Reason: The application depends on the bot for its primary flow, which cannot function if the bot fails to start.
 
 ### Why tests use Drizzle schema references
 
-Reason: So that if migrations change a column or table, it will be caught.
+Reason: Tests should detect table or column changes introduced by migrations.
