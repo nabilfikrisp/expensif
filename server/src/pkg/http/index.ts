@@ -1,6 +1,7 @@
 import { serve } from "@hono/node-server";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { Scalar } from "@scalar/hono-api-reference";
+import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
 import { requestId } from "hono/request-id";
 import { secureHeaders } from "hono/secure-headers";
@@ -24,6 +25,13 @@ function useMiddleware(app: OpenAPIHono, logger: Logger, defaultLimiter: RateLim
   app.use(requestId());
   app.use(initHTTPLoggerMiddleware(logger));
   app.use(defaultLimiter);
+  app.use(
+    bodyLimit({
+      maxSize: 64 * 1024,
+      onError: (c) =>
+        c.json({ success: false, message: "Payload too large", error: "PAYLOAD_TOO_LARGE" }, 413),
+    })
+  );
 }
 
 function useCors(app: OpenAPIHono) {
