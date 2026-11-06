@@ -1,27 +1,76 @@
-import { serve } from "@hono/node-server";
-import { Hono } from "hono";
-import { initEnv } from "./pkg/env/env.js";
-import type { EnvSchema } from "./pkg/env/env.js";
-
-function initApp(env: EnvSchema) {
-  const app = new Hono();
-
-  app.get("/", (c) => {
-    return c.text(`Hello Hono is running in port: ${env.PORT}!`);
-  });
-
-  return app;
-}
+import { initApiKeyRoutes } from "@/modules/api-key/controllers/http";
+import { initApiKeyService } from "@/modules/api-key/service";
+import { initAuthRoutes } from "@/modules/auth/controllers/http";
+import { initAuthMiddleware } from "@/modules/auth/controllers/middleware";
+import { initAuthService } from "@/modules/auth/service";
+import { registerExpenseCommands } from "@/modules/expense/controllers/bot";
+import { initExpenseService } from "@/modules/expense/service";
+import { registerLinkCommand } from "@/modules/linked-account/controllers/bot";
+import { initLinkedAccountRoutes } from "@/modules/linked-account/controllers/http";
+import { initLinkedAccountService } from "@/modules/linked-account/service";
+import { initLinkedAccountUseCase } from "@/modules/linked-account/use-case";
+import { initUserRoutes } from "@/modules/user/controllers/http";
+import { initUserService } from "@/modules/user/service";
+import { initBot, startBot } from "@/pkg/bot/telegram";
+import { initDb } from "@/pkg/db";
+import { initEnv } from "@/pkg/env";
+import { initHttp, startHttp } from "@/pkg/http";
+import { initLlm } from "@/pkg/llm";
+import { initLogger } from "@/pkg/logger";
+import { initRateLimiters } from "@/shared/rate-limit";
+import { shutdown } from "@/shutdown";
 
 const env = initEnv();
-const app = initApp(env);
+const { db, client } = initDb(env.DATABASE_URL);
+const logger = initLogger(env);
+const llm = initLlm(env.OPENROUTER_API_KEY, env.OPENROUTER_MODEL);
+const expenseService = initExpenseService(llm, db);
+const authService = initAuthService(env, db);
+const userService = initUserService(db);
 
-serve(
-  {
-    fetch: app.fetch,
-    port: env.PORT,
-  },
-  (info) => {
-    console.log(`Server is running on http://localhost:${info.port} (${env.NODE_ENV})`);
-  }
+const accessSecret = authService.encodeSecret(env.JWT_SECRET);
+const authMiddleware = initAuthMiddleware((t) => authService.verifyToken(t, accessSecret));
+
+const rateLimiters = initRateLimiters(env.DEPLOY_PROXY);
+
+const authRoutes = initAuthRoutes({ env, authService, userService, authMiddleware, rateLimiters });
+
+const linkedAccountService = initLinkedAccountService(db);
+const apiKeyService = initApiKeyService(env, db);
+const linkedAccountUseCase = initLinkedAccountUseCase({
+  db,
+  apiKeyService,
+  linkedAccountService,
+  userService,
+});
+const apiKeyRoutes = initApiKeyRoutes(apiKeyService, authMiddleware);
+const linkedAccountRoutes = initLinkedAccountRoutes(linkedAccountService, authMiddleware);
+
+const app = initHttp(
+  env,
+  logger,
+  [
+    { prefix: "auth", app: authRoutes },
+    { prefix: "user", app: initUserRoutes(userService, authMiddleware) },
+    { prefix: "api-key", app: apiKeyRoutes },
+    { prefix: "linked-account", app: linkedAccountRoutes },
+  ],
+  { defaultLimiter: rateLimiters.default }
 );
+const bot = initBot({
+  logger,
+  token: env.TELEGRAM_BOT_TOKEN,
+});
+registerExpenseCommands(bot, logger, expenseService);
+registerLinkCommand(bot, logger, linkedAccountUseCase);
+bot.command("start", (ctx) => ctx.reply("Welcome! Up and running."));
+bot.on("message", (ctx) => ctx.reply("Got another message!"));
+
+const httpServer = startHttp(app, logger, env.PORT);
+startBot(bot, logger);
+
+process.on(
+  "SIGTERM",
+  () => void shutdown("SIGTERM", { logger, bot, httpServer, dbClient: client })
+);
+process.on("SIGINT", () => void shutdown("SIGINT", { logger, bot, httpServer, dbClient: client }));

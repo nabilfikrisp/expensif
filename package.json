@@ -4,18 +4,15 @@
   "description": "",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "db:dev:up": "docker compose -f docker/compose.yml up -d --wait",
+    "db:dev:down": "docker compose -f docker/compose.yml down",
+    "db:test:up": "docker compose -f docker/compose.test.yml up -d --wait",
+    "db:test:down": "docker compose -f docker/compose.test.yml down",
     "prepare": "husky"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "devEngines": {
-    "packageManager": {
-      "name": "pnpm",
-      "version": "^11.9.0",
-      "onFail": "download"
-    }
-  },
   "type": "module",
   "devDependencies": {
     "eslint": "^10.7.0",

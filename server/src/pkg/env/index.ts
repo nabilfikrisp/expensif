@@ -2,10 +2,21 @@ import "dotenv/config";
 import { z } from "zod";
 import process from "process";
 
+import { PROXY_KINDS } from "@/shared/proxy-ip";
+
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+  DEPLOY_PROXY: z.enum(PROXY_KINDS).default("none"),
   DATABASE_URL: z.string().min(1, "DATABASE_URL must not be empty"),
   PORT: z.coerce.number().int().positive().default(3000),
+  TELEGRAM_BOT_TOKEN: z.string().min(1, "TELEGRAM_BOT_TOKEN must not be empty"),
+  OPENROUTER_API_KEY: z.string().min(1, "OPENROUTER_API_KEY must not be empty"),
+  OPENROUTER_MODEL: z.string().optional().default("openrouter/free"),
+  JWT_SECRET: z.string().min(32, "JWT_SECRET must be valid and not empty"),
+  ACCESS_TOKEN_EXPIRES_IN_MINUTES: z.string().optional().default("15m"),
+  REFRESH_TOKEN_EXPIRES_IN_DAYS: z.string().optional().default("7d"),
+  API_KEY_SECRET: z.string().min(32, "API_KEY_SECRET must be valid and not empty"),
+  API_KEY_REDEEM_WINDOW_MINUTES: z.coerce.number().int().positive().default(15),
 });
 
 export type EnvSchema = z.infer<typeof envSchema>;
