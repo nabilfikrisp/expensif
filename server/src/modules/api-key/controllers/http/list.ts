@@ -1,10 +1,18 @@
-import { OpenAPIHono, createRoute } from "@hono/zod-openapi";
+import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 
 import type { ApiKeyService } from "@/modules/api-key/service";
-import { listApiKeysQuerySchema } from "@/modules/api-key/service";
 import { apiKeyRespSchema } from "@/modules/api-key/zod-schema";
 import type { AuthMiddleware } from "@/modules/auth/controllers/middleware";
 import { errorRespSchema, paginatedRespSchema } from "@/shared/response.schema";
+
+const listApiKeysQuerySchema = z
+  .object({
+    label: z.string().optional().openapi({ example: "telegram" }),
+    status: z.enum(["active", "revoked", "all"]).default("active").openapi({ example: "active" }),
+    page: z.coerce.number().int().positive().default(1),
+    limit: z.coerce.number().int().positive().max(100).default(10),
+  })
+  .openapi("ListApiKeysQuery");
 
 export const listApiKeysRespSchema = paginatedRespSchema(apiKeyRespSchema);
 

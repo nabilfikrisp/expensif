@@ -30,6 +30,10 @@ export function initMeRoute(deps: MeRouteDeps) {
         content: { "application/json": { schema: errorRespSchema } },
         description: "Unauthorized",
       },
+      404: {
+        content: { "application/json": { schema: errorRespSchema } },
+        description: "User not found",
+      },
     },
   });
 

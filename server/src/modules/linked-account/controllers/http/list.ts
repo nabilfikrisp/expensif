@@ -5,7 +5,7 @@ import type { LinkedAccountService } from "@/modules/linked-account/service";
 import { linkedAccountRespSchema } from "@/modules/linked-account/zod-schema";
 import { errorRespSchema } from "@/shared/response.schema";
 
-const listLinkedAccountsRespSchema = z
+export const listLinkedAccountsRespSchema = z
   .object({
     success: z.boolean(),
     message: z.string(),

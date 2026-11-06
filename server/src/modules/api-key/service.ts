@@ -1,4 +1,3 @@
-import { z } from "@hono/zod-openapi";
 import { and, count, eq, ilike, isNotNull, isNull, sql } from "drizzle-orm";
 import { createHmac } from "node:crypto";
 
@@ -7,19 +6,12 @@ import { apiKeys } from "@/modules/api-key/schema";
 import type { Db, DbTx, Tx } from "@/pkg/db";
 import type { EnvSchema } from "@/pkg/env";
 
-export const listApiKeysQuerySchema = z
-  .object({
-    label: z.string().optional().openapi({ example: "telegram" }),
-    status: z
-      .enum(["active", "revoked", "all"])
-      .optional()
-      .default("active")
-      .openapi({ example: "active" }),
-    page: z.coerce.number().int().positive().optional().default(1),
-    limit: z.coerce.number().int().positive().max(100).optional().default(10),
-  })
-  .openapi("ListApiKeysQuery");
-export type ListApiKeysFilters = z.infer<typeof listApiKeysQuerySchema>;
+export interface ListApiKeysFilters {
+  label?: string;
+  status: "active" | "revoked" | "all";
+  page: number;
+  limit: number;
+}
 
 export function initApiKeyService(env: EnvSchema, db: Db) {
   return {
@@ -56,19 +48,17 @@ export function initApiKeyService(env: EnvSchema, db: Db) {
       };
     },
     /**
-     * List API keys for a user with pagination and optional filtering.
+     * List API keys for a user with validated pagination and filters.
      *
      * @param userId - The user whose keys to list
-     * @param filters.page - Page number, defaults to 1
-     * @param filters.limit - Items per page, defaults to 10
-     * @param filters.status - Filter by key status: "active" (not revoked), "revoked", or "all". Defaults to "active"
+     * @param filters.page - Page number
+     * @param filters.limit - Items per page
+     * @param filters.status - Filter by key status: "active" (not revoked), "revoked", or "all"
      * @param filters.label - Partial match filter on key label
      */
-    async listApiKeys(userId: string, filters?: ListApiKeysFilters) {
-      const page = filters?.page ?? 1;
-      const limit = filters?.limit ?? 10;
+    async listApiKeys(userId: string, filters: ListApiKeysFilters) {
+      const { page, limit, status } = filters;
       const offset = (page - 1) * limit;
-      const status = filters?.status ?? "active";
 
       const conditions = [eq(apiKeys.userId, userId)];
 
@@ -79,7 +69,7 @@ export function initApiKeyService(env: EnvSchema, db: Db) {
       }
       // "all" — no additional filter
 
-      if (filters?.label) {
+      if (filters.label) {
         conditions.push(ilike(apiKeys.label, `%${filters.label}%`));
       }
 
@@ -160,10 +150,11 @@ export function initApiKeyService(env: EnvSchema, db: Db) {
     },
     async burnApiKey(plainKey: string, tx: DbTx) {
       const keyHash = hashApiKey(env, plainKey);
+      // Do not reveal whether an exposed key exists or was already revoked.
       await tx
         .update(apiKeys)
-        .set({ lastUsedAt: sql`clock_timestamp()` })
-        .where(and(eq(apiKeys.keyHash, keyHash), isNull(apiKeys.lastUsedAt)));
+        .set({ revokedAt: sql`clock_timestamp()` })
+        .where(and(eq(apiKeys.keyHash, keyHash), isNull(apiKeys.revokedAt)));
     },
     async revokeApiKey(userId: string, keyId: string) {
       const result = await db

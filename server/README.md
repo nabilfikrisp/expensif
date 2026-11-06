@@ -1,6 +1,8 @@
 # Server
 
-See the [root README](../README.md) for installation, database setup, migrations, and tests. Commands in this document run from `server/`.
+This document describes server configuration, HTTP APIs, Telegram behavior, and runtime wiring. Commands in this document run from `server/`.
+
+Installation, database setup, and migrations are in the [root README](../README.md#local-setup).
 
 ## Configuration
 
@@ -36,6 +38,7 @@ Interactive documentation is at `/api/v1/docs`, with the schema at `/api/v1/doc`
 | POST   | `/api/v1/auth/refresh`        | Refresh cookie plus matching CSRF cookie/header                                   |
 | POST   | `/api/v1/auth/logout`         | Clears cookies; no server-side token revocation                                   |
 | GET    | `/api/v1/auth/me`             | Bearer access token                                                               |
+| DELETE | `/api/v1/user/me`             | Bearer access token; deletes only the token owner and cascades to owned data        |
 | POST   | `/api/v1/api-key`             | Bearer access token; JSON object with optional `label`                            |
 | GET    | `/api/v1/api-key`             | Bearer access token; optional `label`, `status`, `page`, `limit` query parameters |
 | PATCH  | `/api/v1/api-key/{id}`        | Bearer access token; revokes an owned key                                         |
@@ -45,7 +48,7 @@ Interactive documentation is at `/api/v1/docs`, with the schema at `/api/v1/doc`
 
 Register, login, and refresh return `data.accessToken`. Send it as `Authorization: Bearer <token>`. The `refresh_token` cookie is HttpOnly and scoped to `/api/v1/auth`. The readable `csrf_token` cookie is scoped to `/`; send its value as `X-CSRF-Token` when refreshing. Issuing or clearing CSRF cookies also deletes the legacy API-scoped cookie.
 
-Refresh issues tokens again but does not invalidate the old refresh token. Logout only clears browser cookies; copied tokens remain valid until expiry. Server-side revocation is [planned](../docs/2-token-plan.md).
+Refresh issues tokens again but does not invalidate the old refresh token. Logout only clears browser cookies; copied tokens remain valid until expiry. The unimplemented design is in the [refresh-session proposal](../docs/session-revocation.md).
 
 CORS permits the server's own origin with credentials; there is no separate frontend-origin allowlist. In-memory HTTP limits are 100 requests/minute globally, plus 20/minute for login and 10/minute for registration, per client IP. Limits are per process and do not apply to Telegram commands.
 
@@ -54,14 +57,14 @@ Import the [Postman collection](../docs/expensif.postman_collection.json). Set `
 ## Telegram
 
 - `/start`: welcome message.
-- `/link <key>`: links the sender's Telegram account to the key owner in a private chat. Keys pasted in non-private chats are marked used instead of linked.
+- `/link <key>`: links the sender's Telegram account to the key owner in a private chat. Keys pasted in non-private chats are revoked without linking or changing their usage timestamp. The original message is not deleted.
 - `/expense <description>`: asks the LLM for one structured expense and displays it. No persistence or linked-account authorization yet. Dates use the current UTC date; user timezones are not implemented.
 
-Unhandled update errors are logged by `bot.catch` so subsequent updates can continue. A rejected `bot.start()` is logged; startup failures are not automatically restarted.
+Unhandled update errors are logged by `bot.catch` so subsequent updates can continue. A rejected `bot.start()` is logged and terminates the process with exit code 1, stopping HTTP as well. Retry-delay cancellation during intentional bot shutdown is ignored. The running message is logged only after bot initialization succeeds.
 
 ## Structure and commands
 
-`src/index.ts` constructs dependencies and starts HTTP and Telegram. Module controllers handle transport, services handle operations, and the linked-account use case owns the transaction spanning key consumption, linking, and user lookup. `src/pkg/` contains database, HTTP, cookies, logging, bot, LLM, and environment infrastructure.
+`src/index.ts` constructs dependencies, registers Telegram commands before the catch-all message handler, and starts HTTP and Telegram. `initBot` creates the bot and configures its error handler. Module controllers handle transport, services handle operations, and the linked-account use case owns the transaction spanning key consumption, linking, and user lookup. `src/pkg/` contains database, HTTP, cookies, logging, bot, LLM, and environment infrastructure.
 
 ```sh
 pnpm dev
@@ -71,4 +74,4 @@ pnpm lintformat
 pnpm test:run
 ```
 
-`dev` enables grammY debug output. `start` runs the built server; apply migrations separately first. The test database must be running for `test:run`; see the root README for switching containers.
+`dev` enables grammY debug output. `start` runs the built server; apply migrations separately first. The dedicated test database must be running for `test:run`; [test setup](../README.md#checks-and-tests) explains how to switch containers safely.

@@ -67,10 +67,10 @@ The test helper uses a fixed local test URL, verifies the database and role, app
 ## Documentation
 
 - [Server configuration, routes, and architecture](server/README.md)
-- [Product goals and implementation status](docs/prd.md)
-- [PostgreSQL table reference](docs/erd.md)
-- [API-key linking behavior](docs/1-plan.md)
-- [Proposed token revocation](docs/2-token-plan.md)
-- [Review fixes and remaining work](docs/fix.md)
-- [Test coverage](docs/4-use-case-test-refactor.md)
+- [Product intent (target)](docs/product-intent.md)
+- [Implementation status and known gaps](docs/status.md)
+- [Data model (target)](docs/data-model.md)
+- [Architecture rules and rationale](docs/architecture.md)
+- [Glossary](docs/glossary.md)
+- [Proposed refresh sessions and logout](docs/session-revocation.md)
 - [Postman collection](docs/expensif.postman_collection.json)

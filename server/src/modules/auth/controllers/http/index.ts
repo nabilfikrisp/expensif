@@ -10,6 +10,7 @@ import { initRegisterRoute } from "./register";
 import type { AuthMiddleware } from "@/modules/auth/controllers/middleware";
 import { AuthError } from "@/modules/auth/error";
 import type { AuthService } from "@/modules/auth/service";
+import { UserError } from "@/modules/user/error";
 import type { UserService } from "@/modules/user/service";
 import { initCookieJar } from "@/pkg/cookies";
 import type { EnvSchema } from "@/pkg/env";
@@ -49,7 +50,7 @@ export function initAuthRoutes({
   app.route("/", meRoute);
 
   app.onError((err, c) => {
-    if (err instanceof AuthError) {
+    if (err instanceof AuthError || err instanceof UserError) {
       return c.json(
         {
           success: false,

@@ -6,6 +6,16 @@ import type { Db, DbTx } from "@/pkg/db";
 
 export function initUserService(db: Db) {
   return {
+    async deleteUser(userId: string, tx: DbTx = db) {
+      const deleted = await tx
+        .delete(users)
+        .where(eq(users.id, userId))
+        .returning({ id: users.id });
+
+      if (deleted.length === 0) {
+        throw UserError.notFound();
+      }
+    },
     async getUser(userId: string, tx: DbTx = db) {
       const user = (
         await tx

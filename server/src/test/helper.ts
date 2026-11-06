@@ -1,15 +1,21 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
+import { sql } from "drizzle-orm";
 
 import { initApiKeyRoutes } from "@/modules/api-key/controllers/http";
+import { generateApiKeyRespSchema } from "@/modules/api-key/controllers/http/generate";
 import { initApiKeyService } from "@/modules/api-key/service";
 import { initAuthRoutes } from "@/modules/auth/controllers/http";
 import { initAuthMiddleware } from "@/modules/auth/controllers/middleware";
 import { initAuthService } from "@/modules/auth/service";
+import { initLinkedAccountRoutes } from "@/modules/linked-account/controllers/http";
+import { listLinkedAccountsRespSchema } from "@/modules/linked-account/controllers/http/list";
 import { initLinkedAccountService } from "@/modules/linked-account/service";
 import { initLinkedAccountUseCase } from "@/modules/linked-account/use-case";
+import { initUserRoutes } from "@/modules/user/controllers/http";
 import { initUserService } from "@/modules/user/service";
 import { initDb } from "@/pkg/db";
 import type { Db, DbClient } from "@/pkg/db";
+import { apiKeys, categories, expenses, linkedAccounts, messages, users } from "@/pkg/db/schema";
 import type { EnvSchema } from "@/pkg/env";
 import { API_PREFIX, initHttp } from "@/pkg/http";
 import { initLogger } from "@/pkg/logger";
@@ -64,8 +70,8 @@ export async function initTestDb() {
     return {
       ...database,
       resetDb: async () => {
-        await client.query(
-          "TRUNCATE TABLE public.users, public.categories, public.messages, public.expenses, public.linked_accounts, public.api_keys"
+        await database.db.execute(
+          sql`TRUNCATE TABLE ${users}, ${categories}, ${messages}, ${expenses}, ${linkedAccounts}, ${apiKeys}`
         );
       },
     };
@@ -129,6 +135,11 @@ function buildApp(env: EnvSchema, db: Db) {
     logger,
     [
       { prefix: "auth", app: authRoutes },
+      { prefix: "user", app: initUserRoutes(userService, authMiddleware) },
+      {
+        prefix: "linked-account",
+        app: initLinkedAccountRoutes(linkedAccountService, authMiddleware),
+      },
       { prefix: "api-key", app: initApiKeyRoutes(apiKeyService, authMiddleware) },
     ],
     {
@@ -193,4 +204,39 @@ export async function registerAndGetToken(
   const csrfToken = csrfCookie.split(";")[0].replace(/^csrf_token=/, "");
 
   return { accessToken, refreshToken, csrfToken };
+}
+
+export async function createLinkedUser(ctx: Awaited<ReturnType<typeof initTest>>, name: string) {
+  const { accessToken } = await registerAndGetToken(ctx.app, {
+    email: `${name}@example.com`,
+    password: "pass123",
+    name,
+  });
+  const headers = { Authorization: `Bearer ${accessToken}` };
+  const issued = await ctx.app.request(`${API_PREFIX}/api-key`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify({ label: "telegram" }),
+  });
+  if (issued.status !== 201) {
+    throw new Error(`Key creation failed: ${issued.status}`);
+  }
+  const {
+    data: { key },
+  } = generateApiKeyRespSchema.parse(await issued.json());
+  // Linking is a bot operation; seed through its use case, then exercise HTTP ownership.
+  await ctx.useCases.linkedAccount.redeemApiKey({
+    token: key,
+    platform: "telegram",
+    platformUserId: name,
+  });
+  const res = await ctx.app.request(`${API_PREFIX}/linked-account`, { headers });
+  if (res.status !== 200) {
+    throw new Error(`Linked-account listing failed: ${res.status}`);
+  }
+  const { data } = listLinkedAccountsRespSchema.parse(await res.json());
+  if (data.length !== 1) {
+    throw new Error("Expected one linked account");
+  }
+  return { headers, account: data[0] };
 }

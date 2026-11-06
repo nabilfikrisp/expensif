@@ -1,37 +1,34 @@
 import { Bot } from "grammy";
-import { registerExpenseCommands } from "@/modules/expense/controllers/bot";
-import type { ExpensesService } from "@/modules/expense/service";
-import { registerLinkCommand } from "@/modules/linked-account/controllers/bot";
-import type { LinkedAccountUseCase } from "@/modules/linked-account/use-case";
 import type { Logger } from "@/pkg/logger";
 
 export interface InitBotParams {
   token: string;
   logger: Logger;
-  expenseService: ExpensesService;
-  linkedAccountUseCase: LinkedAccountUseCase;
 }
 
-export function initBot({ token, logger, expenseService, linkedAccountUseCase }: InitBotParams) {
-  // orders matters for command and message
+export function initBot({ token, logger }: InitBotParams) {
   const bot = new Bot(token);
   bot.catch((err) => {
     logger.error({ err: err.error, updateId: err.ctx.update.update_id }, "Bot update failed");
   });
 
-  registerExpenseCommands(bot, logger, expenseService);
-  registerLinkCommand(bot, logger, linkedAccountUseCase);
-  bot.command("start", (ctx) => ctx.reply("Welcome! Up and running."));
-  bot.on("message", (ctx) => ctx.reply("Got another message!"));
-
   return bot;
 }
 
 export function startBot(bot: Bot, logger: Logger) {
-  void bot.start().catch((err: unknown) => {
-    if (err instanceof Error && err.message !== "Aborted delay") {
+  void bot
+    .start({
+      onStart: () => {
+        logger.info("Telegram Bot is running...");
+      },
+    })
+    .catch((err: unknown) => {
+      // grammY aborts retry delays when bot.stop() cancels polling during shutdown.
+      if (err instanceof Error && err.message === "Aborted delay") {
+        return;
+      }
       logger.error({ err }, "Bot stopped with error");
-    }
-  });
-  logger.info("Telegram Bot is running...");
+      // eslint-disable-next-line n/no-process-exit -- HTTP must not outlive a failed bot.
+      process.exit(1);
+    });
 }
