@@ -1,5 +1,5 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { initTest, registerAndGetToken } from "../../../../helper";
 
@@ -20,10 +20,6 @@ beforeEach(async () => {
   await resetDb();
 });
 
-afterEach(() => {
-  vi.restoreAllMocks();
-});
-
 describe(`POST ${API_PREFIX}/auth/logout`, () => {
   const mockUser = { email: "test@example.com", password: "pass123", name: "Test User" };
 
@@ -37,11 +33,9 @@ describe(`POST ${API_PREFIX}/auth/logout`, () => {
 
     expect(res.status).toBe(200);
     const respBody: unknown = await res.json();
-    const parseResult = successRespSchema.safeParse(respBody);
+    const parseResult = successRespSchema.parse(respBody);
+
     expect(parseResult.success).toBe(true);
-    if (parseResult.success) {
-      expect(parseResult.data.success).toBe(true);
-    }
 
     const setCookies = res.headers.getSetCookie();
     const clearedRefreshCookie = setCookies.find((c) => c.startsWith("refresh_token="));

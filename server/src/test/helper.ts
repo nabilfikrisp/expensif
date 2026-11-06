@@ -206,6 +206,18 @@ export async function registerAndGetToken(
   return { accessToken, refreshToken, csrfToken };
 }
 
+export async function createApiKey(app: OpenAPIHono, accessToken: string, label?: string) {
+  const response = await app.request(`${API_PREFIX}/api-key`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ label }),
+  });
+  if (response.status !== 201) {
+    throw new Error(`Key creation failed: ${response.status}`);
+  }
+  return generateApiKeyRespSchema.parse(await response.json()).data;
+}
+
 export async function createLinkedUser(ctx: Awaited<ReturnType<typeof initTest>>, name: string) {
   const { accessToken } = await registerAndGetToken(ctx.app, {
     email: `${name}@example.com`,
@@ -213,17 +225,7 @@ export async function createLinkedUser(ctx: Awaited<ReturnType<typeof initTest>>
     name,
   });
   const headers = { Authorization: `Bearer ${accessToken}` };
-  const issued = await ctx.app.request(`${API_PREFIX}/api-key`, {
-    method: "POST",
-    headers: { ...headers, "Content-Type": "application/json" },
-    body: JSON.stringify({ label: "telegram" }),
-  });
-  if (issued.status !== 201) {
-    throw new Error(`Key creation failed: ${issued.status}`);
-  }
-  const {
-    data: { key },
-  } = generateApiKeyRespSchema.parse(await issued.json());
+  const { key } = await createApiKey(ctx.app, accessToken, "telegram");
   // Linking is a bot operation; seed through its use case, then exercise HTTP ownership.
   await ctx.useCases.linkedAccount.redeemApiKey({
     token: key,

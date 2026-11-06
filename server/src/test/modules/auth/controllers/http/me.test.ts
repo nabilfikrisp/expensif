@@ -1,5 +1,5 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { initTest, registerAndGetToken } from "../../../../helper";
 
@@ -23,10 +23,6 @@ beforeEach(async () => {
   await resetDb();
 });
 
-afterEach(() => {
-  vi.restoreAllMocks();
-});
-
 describe(`GET ${API_PREFIX}/auth/me`, () => {
   const mockUser = { email: "test@example.com", password: "pass123", name: "Test User" };
 
@@ -40,14 +36,9 @@ describe(`GET ${API_PREFIX}/auth/me`, () => {
 
     expect(res.status).toBe(200);
     const respBody: unknown = await res.json();
-    const parseResult = meRespSchema.safeParse(respBody);
-
-    expect(parseResult.success).toBe(true);
-    if (parseResult.success) {
-      const response = parseResult.data;
-      expect(response.data.user.email).toBe(mockUser.email);
-      expect(response.data.user.name).toBe(mockUser.name);
-    }
+    const response = meRespSchema.parse(respBody);
+    expect(response.data.user.email).toBe(mockUser.email);
+    expect(response.data.user.name).toBe(mockUser.name);
   });
 
   it("returns 404 when the token owner no longer exists", async () => {
@@ -77,14 +68,9 @@ describe(`GET ${API_PREFIX}/auth/me`, () => {
 
     expect(res.status).toBe(401);
     const respBody: unknown = await res.json();
-    const parseResult = errorRespSchema.safeParse(respBody);
-
-    expect(parseResult.success).toBe(true);
-    if (parseResult.success) {
-      const response = parseResult.data;
-      expect(response.success).toBe(false);
-      expect(response.message).toBe(AuthError.missingBearerHeader().message);
-    }
+    const response = errorRespSchema.parse(respBody);
+    expect(response.success).toBe(false);
+    expect(response.message).toBe(AuthError.missingBearerHeader().message);
   });
 
   it("returns 401 with invalid token", async () => {
@@ -95,13 +81,8 @@ describe(`GET ${API_PREFIX}/auth/me`, () => {
 
     expect(res.status).toBe(401);
     const respBody: unknown = await res.json();
-    const parseResult = errorRespSchema.safeParse(respBody);
-
-    expect(parseResult.success).toBe(true);
-    if (parseResult.success) {
-      const response = parseResult.data;
-      expect(response.success).toBe(false);
-      expect(response.message).toBe(AuthError.failedVerifyingJwt().message);
-    }
+    const response = errorRespSchema.parse(respBody);
+    expect(response.success).toBe(false);
+    expect(response.message).toBe(AuthError.failedVerifyingJwt().message);
   });
 });

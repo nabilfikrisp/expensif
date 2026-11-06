@@ -17,7 +17,9 @@
     "db:studio": "drizzle-kit studio",
     "prepare": "husky",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "test:standalone:expense-parser": "node --import tsx src/test/modules/expense/parser.check.ts",
+    "test:standalone:bot-startup": "node --import tsx src/test/pkg/bot/telegram/start.check.ts"
   },
   "devEngines": {
     "packageManager": {

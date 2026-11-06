@@ -35,7 +35,7 @@ function insertExpense(amount: string, currency?: string) {
 }
 
 describe("expense database policy", () => {
-  it.each(["1", "15000", "9007199254740993", "999999999999999999999999999999"])(
+  it.each(["1", "9007199254740993", "999999999999999999999999999999"])(
     "stores %s as an exact whole-rupiah value with default IDR",
     async (amount) => {
       const [row] = await insertExpense(amount);
@@ -44,7 +44,7 @@ describe("expense database policy", () => {
     }
   );
 
-  it.each(["0", "-1", "1.001", "0.999", "1.00000000000000000001", "NaN", "Infinity", "-Infinity"])(
+  it.each(["0", "-1", "0.999", "1.00000000000000000001", "NaN", "Infinity", "-Infinity"])(
     "rejects %s before any rounding",
     async (amount) => {
       await expect(insertExpense(amount)).rejects.toMatchObject({

@@ -34,21 +34,16 @@ describe(`POST ${API_PREFIX}/api-key`, () => {
     });
     expect(res.status).toBe(201);
     const respBody: unknown = await res.json();
-    const parseResult = generateApiKeyRespSchema.safeParse(respBody);
-
-    expect(parseResult.success).toBe(true);
-    if (parseResult.success) {
-      const response = parseResult.data;
-      expect(response.success).toBe(true);
-      expect(response.data.label).toBe("telegram link");
-      expect(response.data.key).toMatch(/^ek_[a-f0-9]{32}$/);
-      expect(response.data.keyHint).toBe(`ek_****${response.data.key.slice(-4)}`);
-      expect(Date.parse(response.data.expiresAt)).toBeGreaterThan(
-        Date.parse(response.data.createdAt)
-      );
-      expect(respBody).not.toHaveProperty("data.keyHash");
-      expect(respBody).not.toHaveProperty("data.userId");
-    }
+    const response = generateApiKeyRespSchema.parse(respBody);
+    expect(response.success).toBe(true);
+    expect(response.data.label).toBe("telegram link");
+    expect(response.data.key).toMatch(/^ek_[a-f0-9]{32}$/);
+    expect(response.data.keyHint).toBe(`ek_****${response.data.key.slice(-4)}`);
+    expect(Date.parse(response.data.expiresAt)).toBeGreaterThan(
+      Date.parse(response.data.createdAt)
+    );
+    expect(respBody).not.toHaveProperty("data.keyHash");
+    expect(respBody).not.toHaveProperty("data.userId");
   });
 
   it("returns 201 without an optional label", async () => {
@@ -60,15 +55,10 @@ describe(`POST ${API_PREFIX}/api-key`, () => {
     });
     expect(res.status).toBe(201);
     const respBody: unknown = await res.json();
-    const parseResult = generateApiKeyRespSchema.safeParse(respBody);
-
-    expect(parseResult.success).toBe(true);
-    if (parseResult.success) {
-      const response = parseResult.data;
-      expect(response.success).toBe(true);
-      expect(response.data.label).toBeNull();
-      expect(response.data.key).toMatch(/^ek_[a-f0-9]{32}$/);
-    }
+    const response = generateApiKeyRespSchema.parse(respBody);
+    expect(response.success).toBe(true);
+    expect(response.data.label).toBeNull();
+    expect(response.data.key).toMatch(/^ek_[a-f0-9]{32}$/);
   });
 
   it("returns 401 without Authorization header", async () => {
@@ -79,15 +69,10 @@ describe(`POST ${API_PREFIX}/api-key`, () => {
     });
     expect(res.status).toBe(401);
     const respBody: unknown = await res.json();
-    const parseResult = errorRespSchema.safeParse(respBody);
-
-    expect(parseResult.success).toBe(true);
-    if (parseResult.success) {
-      const response = parseResult.data;
-      expect(response.success).toBe(false);
-      expect(response.message).toBe(AuthError.missingBearerHeader().message);
-      expect(response.error).toBe(AuthError.missingBearerHeader().code);
-    }
+    const response = errorRespSchema.parse(respBody);
+    expect(response.success).toBe(false);
+    expect(response.message).toBe(AuthError.missingBearerHeader().message);
+    expect(response.error).toBe(AuthError.missingBearerHeader().code);
   });
 
   it("returns 401 with invalid token", async () => {
@@ -98,15 +83,10 @@ describe(`POST ${API_PREFIX}/api-key`, () => {
     });
     expect(res.status).toBe(401);
     const respBody: unknown = await res.json();
-    const parseResult = errorRespSchema.safeParse(respBody);
-
-    expect(parseResult.success).toBe(true);
-    if (parseResult.success) {
-      const response = parseResult.data;
-      expect(response.success).toBe(false);
-      expect(response.message).toBe(AuthError.failedVerifyingJwt().message);
-      expect(response.error).toBe(AuthError.failedVerifyingJwt().code);
-    }
+    const response = errorRespSchema.parse(respBody);
+    expect(response.success).toBe(false);
+    expect(response.message).toBe(AuthError.failedVerifyingJwt().message);
+    expect(response.error).toBe(AuthError.failedVerifyingJwt().code);
   });
 
   it("returns 400 for a non-string label", async () => {

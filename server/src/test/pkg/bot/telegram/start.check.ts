@@ -1,4 +1,4 @@
-// Run: pnpm --dir server exec node --import tsx src/test/pkg/bot/telegram/start.check.ts
+// Run from server/: pnpm test:standalone:bot-startup
 import { Bot } from "grammy";
 import pino from "pino";
 import assert from "node:assert/strict";

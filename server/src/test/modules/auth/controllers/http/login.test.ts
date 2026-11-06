@@ -1,5 +1,5 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { initTest, registerAndGetToken } from "../../../../helper";
 
@@ -21,14 +21,10 @@ beforeEach(async () => {
   await resetDb();
 });
 
-afterEach(() => {
-  vi.restoreAllMocks();
-});
-
 describe(`POST ${API_PREFIX}/auth/login`, () => {
   const mockUser = { email: "test@example.com", password: "pass123", name: "Test User" };
 
-  it("returns 200 with accessToken for valid credentials", async () => {
+  it("returns 200 with accessToken and secure cookies for valid credentials", async () => {
     await registerAndGetToken(app, mockUser);
 
     const res = await app.request(`${API_PREFIX}/auth/login`, {
@@ -39,13 +35,20 @@ describe(`POST ${API_PREFIX}/auth/login`, () => {
 
     expect(res.status).toBe(200);
     const respBody: unknown = await res.json();
-    const parseResult = tokenRespSchema.safeParse(respBody);
+    const response = tokenRespSchema.parse(respBody);
+    expect(response.data.accessToken).toBeTypeOf("string");
 
-    expect(parseResult.success).toBe(true);
-    if (parseResult.success) {
-      const response = parseResult.data;
-      expect(response.data.accessToken).toBeTypeOf("string");
-    }
+    const cookies = res.headers.getSetCookie();
+    const refreshCookie = cookies.find((c) => c.startsWith("refresh_token="));
+
+    expect(refreshCookie).toBeDefined();
+    expect(refreshCookie).toContain("HttpOnly");
+    expect(refreshCookie).toContain("Path=/api/v1/auth");
+    const csrfCookie = cookies.find((c) => c.startsWith("csrf_token="));
+
+    expect(csrfCookie).toBeDefined();
+    expect(csrfCookie).not.toContain("HttpOnly");
+    expect(csrfCookie).toContain("Path=/;");
   });
 
   it("returns 401 for wrong password", async () => {
@@ -59,14 +62,9 @@ describe(`POST ${API_PREFIX}/auth/login`, () => {
 
     expect(res.status).toBe(401);
     const respBody: unknown = await res.json();
-    const parseResult = errorRespSchema.safeParse(respBody);
-
-    expect(parseResult.success).toBe(true);
-    if (parseResult.success) {
-      const response = parseResult.data;
-      expect(response.success).toBe(false);
-      expect(response.message).toBe(AuthError.invalidCredentials().message);
-    }
+    const response = errorRespSchema.parse(respBody);
+    expect(response.success).toBe(false);
+    expect(response.message).toBe(AuthError.invalidCredentials().message);
   });
 
   it("returns 401 for nonexistent email", async () => {
@@ -78,51 +76,8 @@ describe(`POST ${API_PREFIX}/auth/login`, () => {
 
     expect(res.status).toBe(401);
     const respBody: unknown = await res.json();
-    const parseResult = errorRespSchema.safeParse(respBody);
-
-    expect(parseResult.success).toBe(true);
-    if (parseResult.success) {
-      const response = parseResult.data;
-      expect(response.success).toBe(false);
-      expect(response.message).toBe(AuthError.invalidCredentials().message);
-    }
-  });
-
-  it("sets refresh_token http only cookie", async () => {
-    await registerAndGetToken(app, mockUser);
-
-    const res = await app.request(`${API_PREFIX}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: mockUser.email, password: mockUser.password }),
-    });
-
-    expect(res.status).toBe(200);
-
-    const cookies = res.headers.getSetCookie();
-    const refreshCookie = cookies.find((c) => c.startsWith("refresh_token="));
-
-    expect(refreshCookie).toBeDefined();
-    expect(refreshCookie).toContain("HttpOnly");
-    expect(refreshCookie).toContain("Path=/api/v1/auth");
-  });
-
-  it("sets csrf_token cookie without HttpOnly", async () => {
-    await registerAndGetToken(app, mockUser);
-
-    const res = await app.request(`${API_PREFIX}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: mockUser.email, password: mockUser.password }),
-    });
-
-    expect(res.status).toBe(200);
-
-    const cookies = res.headers.getSetCookie();
-    const csrfCookie = cookies.find((c) => c.startsWith("csrf_token="));
-
-    expect(csrfCookie).toBeDefined();
-    expect(csrfCookie).not.toContain("HttpOnly");
-    expect(csrfCookie).toContain("Path=/;");
+    const response = errorRespSchema.parse(respBody);
+    expect(response.success).toBe(false);
+    expect(response.message).toBe(AuthError.invalidCredentials().message);
   });
 });

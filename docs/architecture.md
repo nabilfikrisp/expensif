@@ -27,6 +27,8 @@ These rules apply now. Future improvements require a maintainer decision; they a
 
 11. Test database setup and assertions use Drizzle queries and imported schema references for application tables and columns. Raw SQL remains appropriate for PostgreSQL-specific operations; interpolate schema objects when those operations reference application tables or columns. Typechecking checks schema references; integration tests against committed migrations check the database matches them.
 
+12. Keep routine tests deterministic and free of paid LLM calls. Use mocks to test application validation, not to claim parsing accuracy. Evaluate parsing with the real application LLM in a manually run `.check.ts` file outside `test:run`, using `OPENROUTER_MODEL` and credentials from the application environment, without a fallback model. Test database-error mapping through real PostgreSQL failures and the application's handling of them.
+
 ## Known exceptions
 
 These existing exceptions are not patterns to copy or authorization to fix code outside an assigned task.
@@ -84,3 +86,11 @@ Reason: The application depends on the bot for its primary flow, which cannot fu
 ### Why tests use Drizzle schema references
 
 Reason: Tests should detect table or column changes introduced by migrations.
+
+### Why live LLM evaluation is separate from routine tests
+
+Reason: Parsing should be evaluated against the real LLM. Run that evaluation separately and manually to avoid incurring LLM costs on every full test run.
+
+### Why database-error tests use real failures
+
+Reason: Database-error tests should exercise the real application and database, rather than rely only on constructed errors.

@@ -1,34 +1,57 @@
-import { DrizzleQueryError } from "drizzle-orm";
-import { describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { initTestDb } from "../../helper";
+
+import { apiKeys } from "@/modules/api-key/schema";
+import { users } from "@/modules/user/schema";
 import { isForeignKeyConstraintError, isUniqueConstraintError } from "@/pkg/db/error";
 
-function pgError(code: string): Error & { code: string } {
-  return Object.assign(new Error("database error"), { code });
-}
+let ctx: Awaited<ReturnType<typeof initTestDb>>;
+
+beforeAll(async () => {
+  ctx = await initTestDb();
+  return () => ctx.client.end();
+});
+
+beforeEach(async () => ctx.resetDb());
 
 describe("PostgreSQL constraint error detection", () => {
-  it("detects direct and wrapped unique violations", () => {
-    const error = pgError("23505");
-
-    expect(isUniqueConstraintError(error)).toBe(true);
-    expect(isUniqueConstraintError(new DrizzleQueryError("INSERT", [], error))).toBe(true);
-    expect(isUniqueConstraintError(new Error("service error", { cause: error }))).toBe(true);
-    expect(isForeignKeyConstraintError(error)).toBe(false);
+  it("recognizes a real Drizzle unique violation without treating it as a foreign key error", async () => {
+    const user = { id: "owner", email: "owner@example.com", name: "Owner", passwordHash: "unused" };
+    await ctx.db.insert(users).values(user);
+    const [result] = await Promise.allSettled([
+      ctx.db.insert(users).values({ ...user, id: "other" }),
+    ]);
+    expect(result.status).toBe("rejected");
+    if (result.status === "fulfilled") {
+      throw new Error("Duplicate email was accepted");
+    }
+    expect(isUniqueConstraintError(result.reason)).toBe(true);
+    expect(isForeignKeyConstraintError(result.reason)).toBe(false);
   });
 
-  it("detects direct and wrapped foreign key violations", () => {
-    const error = pgError("23503");
+  it("recognizes a real Drizzle foreign key violation without treating it as a unique error", async () => {
+    const [result] = await Promise.allSettled([
+      ctx.db.insert(apiKeys).values({
+        id: "orphan-key",
+        userId: "missing-owner",
+        keyHash: "hash",
+        keyHint: "hint",
+        expiresAt: "2026-11-07T00:00:00Z",
+      }),
+    ]);
+    expect(result.status).toBe("rejected");
+    if (result.status === "fulfilled") {
+      throw new Error("Missing owner was accepted");
+    }
+    expect(isForeignKeyConstraintError(result.reason)).toBe(true);
+    expect(isUniqueConstraintError(result.reason)).toBe(false);
+  });
 
-    expect(isForeignKeyConstraintError(error)).toBe(true);
-    expect(isForeignKeyConstraintError(new DrizzleQueryError("INSERT", [], error))).toBe(true);
+  it("does not classify unrelated errors, including cyclic causes", () => {
+    const error = new Error("Unrelated failure");
+    error.cause = error;
     expect(isUniqueConstraintError(error)).toBe(false);
-  });
-
-  it("does not classify unrelated or SQLite errors", () => {
-    expect(isUniqueConstraintError(new Error("UNIQUE constraint failed: users.email"))).toBe(false);
-    expect(isForeignKeyConstraintError(new Error("FOREIGN KEY constraint failed"))).toBe(false);
-    expect(isUniqueConstraintError(pgError("23503"))).toBe(false);
-    expect(isForeignKeyConstraintError(pgError("23505"))).toBe(false);
+    expect(isForeignKeyConstraintError(error)).toBe(false);
   });
 });
