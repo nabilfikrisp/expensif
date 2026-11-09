@@ -6,3 +6,4 @@ dist/
 coverage/
 *.log
 .turbo/
+src/pkg/db/migrations/
