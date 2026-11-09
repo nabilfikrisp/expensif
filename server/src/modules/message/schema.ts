@@ -1,4 +1,4 @@
-import { index, pgTable, text, timestamp, unique } from "drizzle-orm/pg-core";
+import { index, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 import { linkedAccounts } from "@/modules/linked-account/schema";
 import { users } from "@/modules/user/schema";
 
@@ -6,7 +6,7 @@ export const messages = pgTable(
   "messages",
   {
     id: text("id").primaryKey(),
-    userId: text("user_id")
+    userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     linkedAccountId: text("linked_account_id").references(() => linkedAccounts.id, {

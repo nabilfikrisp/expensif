@@ -1,0 +1,143 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "63b2601d-57fb-4b24-ae89-9e5e44d78f62",
+  "prevIds": [
+    "6cc6004b-432e-4d44-b85f-55e58db1445b"
+  ],
+  "footprints": [
+    {
+      "statementType": "alter_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "users",
+        "id"
+      ],
+      "writes": [
+        "s|colprop|public.users.id.type",
+        "s|colprop|public.users.id.default"
+      ],
+      "reads": [
+        "n|tbl|public.users",
+        "n|sch|public",
+        "n|col|public.users.id"
+      ],
+      "sqlHash": "c12e7650df180313"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "messages",
+        "user_id"
+      ],
+      "writes": [
+        "s|colprop|public.messages.user_id.type",
+        "s|colprop|public.messages.user_id.default"
+      ],
+      "reads": [
+        "n|tbl|public.messages",
+        "n|sch|public",
+        "n|col|public.messages.user_id"
+      ],
+      "sqlHash": "98e24071548f8f01"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "expenses",
+        "user_id"
+      ],
+      "writes": [
+        "s|colprop|public.expenses.user_id.type",
+        "s|colprop|public.expenses.user_id.default"
+      ],
+      "reads": [
+        "n|tbl|public.expenses",
+        "n|sch|public",
+        "n|col|public.expenses.user_id"
+      ],
+      "sqlHash": "e68cacd15a0970bf"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "linked_accounts",
+        "user_id"
+      ],
+      "writes": [
+        "s|colprop|public.linked_accounts.user_id.type",
+        "s|colprop|public.linked_accounts.user_id.default"
+      ],
+      "reads": [
+        "n|tbl|public.linked_accounts",
+        "n|sch|public",
+        "n|col|public.linked_accounts.user_id"
+      ],
+      "sqlHash": "de22334a8a83430f"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "api_keys",
+        "user_id"
+      ],
+      "writes": [
+        "s|colprop|public.api_keys.user_id.type",
+        "s|colprop|public.api_keys.user_id.default"
+      ],
+      "reads": [
+        "n|tbl|public.api_keys",
+        "n|sch|public",
+        "n|col|public.api_keys.user_id"
+      ],
+      "sqlHash": "e398869429a35176"
+    }
+  ],
+  "deltas": [
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"users\",\"id\"]",
+      "set": {
+        "type": "uuid"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"messages\",\"user_id\"]",
+      "set": {
+        "type": "uuid"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"expenses\",\"user_id\"]",
+      "set": {
+        "type": "uuid"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"linked_accounts\",\"user_id\"]",
+      "set": {
+        "type": "uuid"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"api_keys\",\"user_id\"]",
+      "set": {
+        "type": "uuid"
+      }
+    }
+  ]
+}

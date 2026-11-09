@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, date, index, numeric, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { check, date, index, numeric, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { categories } from "@/modules/category/schema";
 import { messages } from "@/modules/message/schema";
 import { users } from "@/modules/user/schema";
@@ -9,7 +9,7 @@ export const expenses = pgTable(
   {
     id: text("id").primaryKey(),
     messageId: text("message_id").references(() => messages.id, { onDelete: "set null" }),
-    userId: text("user_id")
+    userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     categoryId: text("category_id").references(() => categories.id, { onDelete: "set null" }),

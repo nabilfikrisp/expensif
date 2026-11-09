@@ -1,11 +1,11 @@
-import { index, pgTable, text, timestamp, unique } from "drizzle-orm/pg-core";
+import { index, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 import { users } from "@/modules/user/schema";
 
 export const linkedAccounts = pgTable(
   "linked_accounts",
   {
     id: text("id").primaryKey(),
-    userId: text("user_id")
+    userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     platform: text("platform").notNull(),

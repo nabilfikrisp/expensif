@@ -1,0 +1,185 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "033921ad-7789-4d3a-8bea-3e5841916f31",
+  "prevIds": [
+    "63b2601d-57fb-4b24-ae89-9e5e44d78f62"
+  ],
+  "footprints": [
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "messages"
+      ],
+      "writes": [
+        "s|fk|public.messages.messages_user_id_users_id_fkey",
+        "n|fk|public.messages.messages_user_id_users_id_fkey",
+        "e|fk|public.messages.messages_user_id_users_id_fkey",
+        "n|con|public.messages.messages_user_id_users_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.messages",
+        "n|sch|public",
+        "n|tbl|public.users",
+        "n|sch|public",
+        "n|col|public.messages.user_id",
+        "n|col|public.users.id",
+        "e|uniqueness|public.users.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "expenses"
+      ],
+      "writes": [
+        "s|fk|public.expenses.expenses_user_id_users_id_fkey",
+        "n|fk|public.expenses.expenses_user_id_users_id_fkey",
+        "e|fk|public.expenses.expenses_user_id_users_id_fkey",
+        "n|con|public.expenses.expenses_user_id_users_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.expenses",
+        "n|sch|public",
+        "n|tbl|public.users",
+        "n|sch|public",
+        "n|col|public.expenses.user_id",
+        "n|col|public.users.id",
+        "e|uniqueness|public.users.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "linked_accounts"
+      ],
+      "writes": [
+        "s|fk|public.linked_accounts.linked_accounts_user_id_users_id_fkey",
+        "n|fk|public.linked_accounts.linked_accounts_user_id_users_id_fkey",
+        "e|fk|public.linked_accounts.linked_accounts_user_id_users_id_fkey",
+        "n|con|public.linked_accounts.linked_accounts_user_id_users_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.linked_accounts",
+        "n|sch|public",
+        "n|tbl|public.users",
+        "n|sch|public",
+        "n|col|public.linked_accounts.user_id",
+        "n|col|public.users.id",
+        "e|uniqueness|public.users.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "api_keys"
+      ],
+      "writes": [
+        "s|fk|public.api_keys.api_keys_user_id_users_id_fkey",
+        "n|fk|public.api_keys.api_keys_user_id_users_id_fkey",
+        "e|fk|public.api_keys.api_keys_user_id_users_id_fkey",
+        "n|con|public.api_keys.api_keys_user_id_users_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.api_keys",
+        "n|sch|public",
+        "n|tbl|public.users",
+        "n|sch|public",
+        "n|col|public.api_keys.user_id",
+        "n|col|public.users.id",
+        "e|uniqueness|public.users.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "messages",
+        "name": "messages_user_id_users_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "user_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "users",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "expenses",
+        "name": "expenses_user_id_users_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "user_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "users",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "linked_accounts",
+        "name": "linked_accounts_user_id_users_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "user_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "users",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "api_keys",
+        "name": "api_keys_user_id_users_id_fkey",
+        "nameExplicit": false,
+        "columns": [
+          "user_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "users",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    }
+  ]
+}
