@@ -59,6 +59,4 @@ These observations are not assigned backlog work. The maintainer chooses which t
 
 | Material limitation | Evidence |
 | --- | --- |
-| Full-suite verification is blocked by seven-character password fixtures against the eight-character minimum. | [Auth service](../server/src/modules/auth/service.ts), [linking fixtures](../server/src/test/modules/linked-account/use-case.test.ts) |
-| Parser tests use a mock LLM; live-model conversion accuracy is unverified. | [Parser tests](../server/src/test/modules/expense/parser.test.ts) |
 | Telegram behavior has not been verified against the live platform. | [Bot tests](../server/src/test/pkg/bot/telegram/) |

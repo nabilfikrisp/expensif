@@ -2,13 +2,18 @@ import type { Bot, MiddlewareFn } from "grammy";
 import type { ExpensesService } from "@/modules/expense/service";
 import type { Logger } from "@/pkg/logger";
 
-export function registerExpenseCommands(
-  bot: Bot,
-  logger: Logger,
-  expenseService: ExpensesService,
-  requireLinkedAccount: MiddlewareFn
-) {
-  bot.command("expense", requireLinkedAccount, async (ctx) => {
+export function registerExpenseCommands({
+  bot,
+  logger,
+  expenseService,
+  middleware = [],
+}: {
+  bot: Bot;
+  logger: Logger;
+  expenseService: ExpensesService;
+  middleware?: MiddlewareFn[];
+}) {
+  bot.command("expense", ...middleware, async (ctx) => {
     const text = ctx.match;
     if (!text) {
       await ctx.reply("Usage: /expense <description>\nExample: /expense bakso 15k kemarin");

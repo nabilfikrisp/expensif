@@ -1,7 +1,7 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { initTest, registerAndGetToken } from "../../../../helper";
+import { initTest, registerAndGetToken, mockUser } from "../../../../helper";
 
 import { AuthError } from "@/modules/auth/error";
 import { API_PREFIX } from "@/pkg/http";
@@ -22,8 +22,6 @@ beforeEach(async () => {
 });
 
 describe(`POST ${API_PREFIX}/auth/refresh`, () => {
-  const mockUser = { email: "test@example.com", password: "pass123", name: "Test User" };
-
   it("returns an access token and rotates CSRF for a valid refresh", async () => {
     const { refreshToken, csrfToken } = await registerAndGetToken(app, mockUser);
 

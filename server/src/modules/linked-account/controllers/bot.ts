@@ -18,11 +18,15 @@ const wording = {
 
 const PLATFORM_NAME = "telegram";
 
-export function registerLinkCommand(
-  bot: Bot,
-  logger: Logger,
-  linkedAccountUseCase: LinkedAccountUseCase
-) {
+export function registerLinkCommand({
+  bot,
+  logger,
+  linkedAccountUseCase,
+}: {
+  bot: Bot;
+  logger: Logger;
+  linkedAccountUseCase: LinkedAccountUseCase;
+}) {
   bot.command("link", async (ctx) => {
     const token = ctx.match.trim();
     if (!token) {

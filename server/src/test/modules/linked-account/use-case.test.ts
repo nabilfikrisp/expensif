@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { initTest } from "../../helper";
+import { initTest, mockUser } from "../../helper";
 
 import { ApiKeyError } from "@/modules/api-key/error";
 import { apiKeys } from "@/modules/api-key/schema";
@@ -10,7 +10,6 @@ import { LinkedAccountError } from "@/modules/linked-account/error";
 let ctx: Awaited<ReturnType<typeof initTest>>;
 let userId: string;
 
-const mockUser = { email: "test@example.com", password: "pass123", name: "Test User" };
 const platformArgs = {
   platform: "telegram",
   platformUserId: "tg-123",

@@ -27,12 +27,12 @@ describe(`DELETE ${API_PREFIX}/user/me`, () => {
   it("deletes only the token owner despite another user ID in the request", async () => {
     const owner = await registerAndGetToken(app, {
       email: "owner@example.com",
-      password: "pass123",
+      password: "pass1234",
       name: "Owner",
     });
     const other = await registerAndGetToken(app, {
       email: "other@example.com",
-      password: "pass123",
+      password: "pass1234",
       name: "Other",
     });
     const otherHeaders = { Authorization: `Bearer ${other.accessToken}` };

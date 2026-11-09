@@ -95,8 +95,8 @@ export function initBotApp({ env, db, logger, llm, linkedAccountUseCase }: InitB
   const linkedAccountService = initLinkedAccountService(db);
   const requireLinkedAccount = initRequireLinkedAccountMiddleware(linkedAccountService);
   const bot = initBot({ logger, token: env.TELEGRAM_BOT_TOKEN });
-  registerExpenseCommands(bot, logger, expenseService, requireLinkedAccount);
-  registerLinkCommand(bot, logger, linkedAccountUseCase);
+  registerExpenseCommands({ bot, logger, expenseService, middleware: [requireLinkedAccount] });
+  registerLinkCommand({ bot, logger, linkedAccountUseCase });
   bot.command("start", (ctx) => ctx.reply("Welcome! Up and running."));
   bot.on("message", (ctx) => ctx.reply("Got another message!"));
   return bot;

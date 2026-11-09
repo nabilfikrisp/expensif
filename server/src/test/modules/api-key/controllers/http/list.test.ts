@@ -1,7 +1,7 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { createApiKey, initTest, registerAndGetToken } from "../../../../helper";
+import { createApiKey, initTest, registerAndGetToken, mockUser } from "../../../../helper";
 
 import { listApiKeysRespSchema } from "@/modules/api-key/controllers/http/list";
 import { AuthError } from "@/modules/auth/error";
@@ -23,8 +23,6 @@ beforeEach(async () => {
 });
 
 describe(`GET ${API_PREFIX}/api-key`, () => {
-  const mockUser = { email: "test@example.com", password: "pass123", name: "Test User" };
-
   it("documents query defaults and numeric constraints in OpenAPI", async () => {
     const res = await app.request(`${API_PREFIX}/doc`);
     expect(res.status).toBe(200);

@@ -1,7 +1,7 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { initTest, registerAndGetToken } from "../../../../helper";
+import { initTest, registerAndGetToken, mockUser } from "../../../../helper";
 
 import { API_PREFIX } from "@/pkg/http";
 import { successRespSchema } from "@/shared/response.schema";
@@ -21,8 +21,6 @@ beforeEach(async () => {
 });
 
 describe(`POST ${API_PREFIX}/auth/logout`, () => {
-  const mockUser = { email: "test@example.com", password: "pass123", name: "Test User" };
-
   it("clears refresh_token and csrf_token cookie", async () => {
     const { refreshToken } = await registerAndGetToken(app, mockUser);
 

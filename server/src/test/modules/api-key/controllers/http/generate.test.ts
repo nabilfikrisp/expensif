@@ -1,7 +1,7 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { initTest, registerAndGetToken } from "../../../../helper";
+import { initTest, registerAndGetToken, mockUser } from "../../../../helper";
 
 import { generateApiKeyRespSchema } from "@/modules/api-key/controllers/http/generate";
 import { AuthError } from "@/modules/auth/error";
@@ -23,8 +23,6 @@ beforeEach(async () => {
 });
 
 describe(`POST ${API_PREFIX}/api-key`, () => {
-  const mockUser = { email: "test@example.com", password: "pass123", name: "Test User" };
-
   it("returns 201 with a labeled API key", async () => {
     const { accessToken } = await registerAndGetToken(app, mockUser);
     const res = await app.request(`${API_PREFIX}/api-key`, {

@@ -2,7 +2,7 @@ import { eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { initTest } from "../../helper";
+import { initTest, mockUser } from "../../helper";
 
 import { ApiKeyError } from "@/modules/api-key/error";
 import { apiKeys } from "@/modules/api-key/schema";
@@ -10,7 +10,6 @@ import { apiKeys } from "@/modules/api-key/schema";
 let ctx: Awaited<ReturnType<typeof initTest>>;
 let userId: string;
 
-const mockUser = { email: "test@example.com", password: "pass123", name: "Test User" };
 async function issueKey() {
   return await ctx.services.apiKey.generateApiKey(userId, "telegram");
 }

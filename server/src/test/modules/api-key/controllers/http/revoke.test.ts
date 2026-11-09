@@ -1,7 +1,7 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { createApiKey, initTest, registerAndGetToken } from "../../../../helper";
+import { createApiKey, initTest, registerAndGetToken, mockUser } from "../../../../helper";
 
 import { listApiKeysRespSchema } from "@/modules/api-key/controllers/http/list";
 import { ApiKeyError } from "@/modules/api-key/error";
@@ -24,8 +24,6 @@ beforeEach(async () => {
 });
 
 describe(`PATCH ${API_PREFIX}/api-key/{id}`, () => {
-  const mockUser = { email: "test@example.com", password: "pass123", name: "Test User" };
-
   it("returns 200 and revokes the key", async () => {
     const { accessToken } = await registerAndGetToken(app, mockUser);
     const key = await createApiKey(app, accessToken, "telegram");

@@ -1,7 +1,7 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { initTest } from "../../../../helper";
+import { initTest, mockUser } from "../../../../helper";
 
 import { registerRespSchema } from "@/modules/auth/controllers/http/register";
 import { AuthError } from "@/modules/auth/error";
@@ -23,8 +23,6 @@ beforeEach(async () => {
 });
 
 describe(`POST ${API_PREFIX}/auth/register`, () => {
-  const mockUser = { email: "test@example.com", password: "password123", name: "Test User" };
-
   it.each([
     ["too short", "pass123", "INVALID_PASSWORD_MIN_LENGTH"],
     ["too long", "a".repeat(129), "INVALID_PASSWORD_MAX_LENGTH"],

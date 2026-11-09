@@ -11,6 +11,8 @@ import type { EnvSchema } from "@/pkg/env";
 import { API_PREFIX } from "@/pkg/http";
 import { initLogger } from "@/pkg/logger";
 
+export const mockUser = { email: "test@example.com", password: "pass1234", name: "Test User" };
+
 const TEST_DATABASE_URL =
   "postgres://expensif_test:local_test_password@127.0.0.1:5433/expensif_test";
 
@@ -157,7 +159,7 @@ export async function createApiKey(app: OpenAPIHono, accessToken: string, label?
 export async function createLinkedUser(ctx: Awaited<ReturnType<typeof initTest>>, name: string) {
   const { accessToken } = await registerAndGetToken(ctx.app, {
     email: `${name}@example.com`,
-    password: "pass123",
+    password: mockUser.password,
     name,
   });
   const headers = { Authorization: `Bearer ${accessToken}` };

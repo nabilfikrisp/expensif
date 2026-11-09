@@ -1,7 +1,7 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { initTest, registerAndGetToken } from "../../../../helper";
+import { initTest, registerAndGetToken, mockUser } from "../../../../helper";
 
 import { AuthError } from "@/modules/auth/error";
 import { API_PREFIX } from "@/pkg/http";
@@ -22,8 +22,6 @@ beforeEach(async () => {
 });
 
 describe(`POST ${API_PREFIX}/auth/login`, () => {
-  const mockUser = { email: "test@example.com", password: "pass123", name: "Test User" };
-
   it("returns 200 with accessToken and secure cookies for valid credentials", async () => {
     await registerAndGetToken(app, mockUser);
 
@@ -71,7 +69,7 @@ describe(`POST ${API_PREFIX}/auth/login`, () => {
     const res = await app.request(`${API_PREFIX}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "nonexistent@example.com", password: "pass123" }),
+      body: JSON.stringify({ email: "nonexistent@example.com", password: "pass1234" }),
     });
 
     expect(res.status).toBe(401);
