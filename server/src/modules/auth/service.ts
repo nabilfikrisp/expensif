@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { SignJWT, jwtVerify } from "jose";
 import type { JWTPayload } from "jose";
-import { createHmac } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 
 import { AuthError, isTokenVerificationError } from "@/modules/auth/error";
 import { users } from "@/modules/user/schema";
@@ -121,12 +121,31 @@ export function initAuthService(env: EnvSchema, db: Db) {
 
 type TokenType = "access" | "refresh";
 
-async function hashPassword(plain: string): Promise<string> {
-  return await bcrypt.hash(plain, 10);
+const MIN_LENGTH = 8;
+const MAX_LENGTH = 128;
+const COST = 12;
+
+const prehash = (plain: string): string =>
+  createHash("sha256").update(plain.normalize("NFKC"), "utf8").digest("base64");
+
+export async function hashPassword(plain: string): Promise<string> {
+  if (!plain.isWellFormed()) {
+    throw AuthError.invalidPasswordUnicode();
+  }
+  if (plain.length < MIN_LENGTH) {
+    throw AuthError.invalidPasswordMinLength(MIN_LENGTH);
+  }
+  if (plain.length > MAX_LENGTH) {
+    throw AuthError.invalidPasswordMaxLength(MAX_LENGTH);
+  }
+  return await bcrypt.hash(prehash(plain), COST);
 }
 
-async function verifyPassword(plain: string, hash: string): Promise<boolean> {
-  return await bcrypt.compare(plain, hash);
+export async function verifyPassword(plain: string, hash: string): Promise<boolean> {
+  if (!plain.isWellFormed() || plain.length > MAX_LENGTH) {
+    return false;
+  }
+  return await bcrypt.compare(prehash(plain), hash);
 }
 
 async function signToken(

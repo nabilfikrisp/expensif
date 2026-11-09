@@ -13,6 +13,23 @@ export class AuthError extends Error {
   static invalidCredentials() {
     return new AuthError("Invalid email or password", 401, "INVALID_CREDENTIALS");
   }
+  static invalidPasswordMinLength(minLength: number) {
+    return new AuthError(
+      `Password must be at least ${minLength} characters`,
+      400,
+      "INVALID_PASSWORD_MIN_LENGTH"
+    );
+  }
+  static invalidPasswordMaxLength(maxLength: number) {
+    return new AuthError(
+      `Password must be at most ${maxLength} characters`,
+      400,
+      "INVALID_PASSWORD_MAX_LENGTH"
+    );
+  }
+  static invalidPasswordUnicode() {
+    return new AuthError("Password contains invalid Unicode", 400, "INVALID_PASSWORD_UNICODE");
+  }
   static userNotFound() {
     return new AuthError("No account found with this email", 404, "USER_NOT_FOUND");
   }
