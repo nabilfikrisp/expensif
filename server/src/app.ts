@@ -6,6 +6,7 @@ import { initAuthService } from "@/modules/auth/service";
 import { registerExpenseCommands } from "@/modules/expense/controllers/bot";
 import { initExpenseService } from "@/modules/expense/service";
 import { registerLinkCommand } from "@/modules/linked-account/controllers/bot";
+import { initRequireLinkedAccountMiddleware } from "@/modules/linked-account/controllers/bot-middleware";
 import { initLinkedAccountRoutes } from "@/modules/linked-account/controllers/http";
 import { initLinkedAccountService } from "@/modules/linked-account/service";
 import { initLinkedAccountUseCase } from "@/modules/linked-account/use-case";
@@ -91,8 +92,10 @@ interface InitBotAppParams {
 
 export function initBotApp({ env, db, logger, llm, linkedAccountUseCase }: InitBotAppParams) {
   const expenseService = initExpenseService(llm, db);
+  const linkedAccountService = initLinkedAccountService(db);
+  const requireLinkedAccount = initRequireLinkedAccountMiddleware(linkedAccountService);
   const bot = initBot({ logger, token: env.TELEGRAM_BOT_TOKEN });
-  registerExpenseCommands(bot, logger, expenseService);
+  registerExpenseCommands(bot, logger, expenseService, requireLinkedAccount);
   registerLinkCommand(bot, logger, linkedAccountUseCase);
   bot.command("start", (ctx) => ctx.reply("Welcome! Up and running."));
   bot.on("message", (ctx) => ctx.reply("Got another message!"));

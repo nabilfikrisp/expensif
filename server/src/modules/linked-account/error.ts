@@ -13,6 +13,10 @@ export class LinkedAccountError extends Error {
     return new LinkedAccountError("Linked account not found", 404, "ACCOUNT_NOT_FOUND");
   }
 
+  static isAccountNotFound(error: unknown) {
+    return error instanceof LinkedAccountError && error.code === "ACCOUNT_NOT_FOUND";
+  }
+
   private constructor(
     message: string,
     public statusCode: number,

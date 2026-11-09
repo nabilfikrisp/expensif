@@ -50,7 +50,7 @@ Import the [Postman collection](../docs/expensif.postman_collection.json). Set `
 
 - `/start`: show the welcome message.
 - `/link <key>`: link a Telegram account.
-- `/expense <description>`: parse an expense description.
+- `/expense <description>`: parse an expense description; requires a linked account.
 
 ## Structure and commands
 
