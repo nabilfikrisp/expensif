@@ -4,7 +4,7 @@ import { SignJWT, jwtVerify } from "jose";
 import type { JWTPayload } from "jose";
 import { createHmac } from "node:crypto";
 
-import { AuthError } from "@/modules/auth/error";
+import { AuthError, isTokenVerificationError } from "@/modules/auth/error";
 import { users } from "@/modules/user/schema";
 import type { Db } from "@/pkg/db";
 import { isUniqueConstraintError } from "@/pkg/db/error";
@@ -16,7 +16,7 @@ export function initAuthService(env: EnvSchema, db: Db) {
       return createHmac("sha256", raw).update(type).digest();
     },
     async verifyToken(token: string, secret: Uint8Array): Promise<JWTPayload> {
-      const { payload } = await jwtVerify(token, secret);
+      const { payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] });
       return payload;
     },
     async register(email: string, password: string, name: string) {
@@ -85,8 +85,11 @@ export function initAuthService(env: EnvSchema, db: Db) {
       let payload: JWTPayload;
       try {
         payload = await this.verifyToken(token, refreshSecret);
-      } catch {
-        throw AuthError.invalidToken();
+      } catch (error) {
+        if (isTokenVerificationError(error)) {
+          throw AuthError.invalidToken();
+        }
+        throw error;
       }
       if (payload.type !== "refresh") {
         throw AuthError.invalidToken();

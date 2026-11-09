@@ -1,3 +1,5 @@
+import { errors as joseErrors } from "jose";
+
 export class AuthError extends Error {
   static readonly ERROR_NAME = "Auth Error";
 
@@ -38,4 +40,15 @@ export class AuthError extends Error {
     super(message);
     this.name = AuthError.ERROR_NAME;
   }
+}
+
+export function isTokenVerificationError(error: unknown): boolean {
+  return (
+    error instanceof joseErrors.JWSInvalid ||
+    error instanceof joseErrors.JWTInvalid ||
+    error instanceof joseErrors.JWSSignatureVerificationFailed ||
+    error instanceof joseErrors.JWTExpired ||
+    error instanceof joseErrors.JWTClaimValidationFailed ||
+    error instanceof joseErrors.JOSEAlgNotAllowed
+  );
 }

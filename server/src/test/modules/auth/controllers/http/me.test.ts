@@ -11,7 +11,6 @@ import { errorRespSchema } from "@/shared/response.schema";
 
 let app: OpenAPIHono;
 let resetDb: () => Promise<void>;
-
 beforeAll(async () => {
   const ctx = await initTest();
   app = ctx.app;
