@@ -39,4 +39,4 @@ Each expense belongs to a user and may reference a source message and category. 
 
 Expense dates are separate from creation/update timestamps. Relative dates follow the [timezone policy](product-intent.md#why-a-particular-timezone-policy). Update-timestamp maintenance remains to be defined when editing is implemented.
 
-Retention remains [open](product-intent.md#why-a-particular-retention-policy). The [session proposal](session-revocation.md) describes the intended session table; its migration is not approved.
+Retention remains [open](product-intent.md#why-a-particular-retention-policy).

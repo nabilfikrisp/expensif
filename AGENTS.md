@@ -46,5 +46,5 @@ Read code for actual behavior; target documents describe intent.
 | Code changes | [Architecture](docs/architecture.md), then [reference module](server/src/modules/api-key/) |
 | Schema | [Data model](docs/data-model.md) |
 | Product behavior | [Product intent](docs/product-intent.md) |
-| Sessions or tokens | [Session proposal](docs/session-revocation.md) |
+| Sessions or tokens | [Authentication follow-up](docs/auth-follow-up.md) |
 | Commands, API, configuration | [Server README](server/README.md), [root README](README.md), [package scripts](package.json) |

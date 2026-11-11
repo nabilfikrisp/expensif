@@ -13,6 +13,7 @@ import { initDb } from "@/pkg/db";
 import { initLogger } from "@/pkg/logger";
 
 let ctx: Awaited<ReturnType<typeof initTest>>;
+const userId = crypto.randomUUID();
 const reply = vi.fn<Context["reply"]>();
 const editMessageText = vi.fn<Api["editMessageText"]>();
 const sender: User = { id: 123, is_bot: false, first_name: "Test", username: "tester" };
@@ -71,7 +72,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   await ctx.resetDb();
   await ctx.db.insert(users).values({
-    id: "owner",
+    id: userId,
     name: "Owner",
     email: "owner@example.com",
     passwordHash: "unused",
@@ -107,7 +108,7 @@ describe("linked-account bot middleware", () => {
 
   it("preserves parsing for linked senders and blocks the next command after unlinking", async () => {
     const account = await ctx.services.linkedAccount.linkAccount({
-      userId: "owner",
+      userId,
       platform: "telegram",
       platformUserId: sender.id.toString(),
       platformUsername: "old_username",
@@ -121,7 +122,7 @@ describe("linked-account bot middleware", () => {
       expect.stringContaining("Item: bakso")
     );
 
-    await ctx.services.linkedAccount.unlinkAccount("owner", account.id);
+    await ctx.services.linkedAccount.unlinkAccount(userId, account.id);
     reply.mockClear();
     await bot.handleUpdate(command("/expense bakso 15k"));
     expect(reply).toHaveBeenCalledExactlyOnceWith(
@@ -136,7 +137,7 @@ describe("linked-account bot middleware", () => {
     ["telegram", "456"],
   ])("does not authorize through %s identity %s or a matching username", async (platform, id) => {
     await ctx.services.linkedAccount.linkAccount({
-      userId: "owner",
+      userId,
       platform,
       platformUserId: id,
       platformUsername: sender.username,
@@ -200,7 +201,7 @@ describe("linked-account bot middleware", () => {
 
   it("does not translate downstream errors as missing links", async () => {
     await ctx.services.linkedAccount.linkAccount({
-      userId: "owner",
+      userId,
       platform: "telegram",
       platformUserId: sender.id.toString(),
     });

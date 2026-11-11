@@ -25,7 +25,7 @@ pnpm --dir server db:migrate
 pnpm --dir server dev
 ```
 
-The same process starts HTTP and Telegram long polling. Default HTTP port: 3000. API reference: <http://localhost:3000/api/v1/docs>; OpenAPI JSON: <http://localhost:3000/api/v1/doc>.
+The same process runs expired-session cleanup at startup and daily, alongside HTTP and Telegram long polling. Default HTTP port: 3000. API reference: <http://localhost:3000/api/v1/docs>; OpenAPI JSON: <http://localhost:3000/api/v1/doc>.
 
 ## Database migrations
 
@@ -66,5 +66,5 @@ Tests truncate application tables: use only the dedicated test database. Tests d
 - [Data model (target)](docs/data-model.md)
 - [Architecture rules and rationale](docs/architecture.md)
 - [Glossary](docs/glossary.md)
-- [Proposed refresh sessions and logout](docs/session-revocation.md)
+- [Authentication follow-up](docs/auth-follow-up.md)
 - [Postman collection](docs/expensif.postman_collection.json)

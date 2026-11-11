@@ -11,6 +11,7 @@ interface ShutdownOptions {
   bot: Bot;
   httpServer: ServerType;
   dbClient: DbClient;
+  stopJobs: () => Promise<void>;
 }
 
 const SHUTDOWN_TIMEOUT = 10_000; // 10 seconds
@@ -21,7 +22,7 @@ export async function shutdown(signal: string, opts: ShutdownOptions) {
   }
   isShuttingDown = true;
 
-  const { logger, bot, httpServer, dbClient } = opts;
+  const { logger, bot, httpServer, dbClient, stopJobs } = opts;
 
   logger.info(`Received ${signal}, shutting down gracefully...`);
 
@@ -32,6 +33,8 @@ export async function shutdown(signal: string, opts: ShutdownOptions) {
   forceExitTimeout.unref();
 
   try {
+    await stopJobs();
+    logger.info("Scheduled jobs stopped");
     await bot.stop();
     logger.info("Telegram bot stopped");
 

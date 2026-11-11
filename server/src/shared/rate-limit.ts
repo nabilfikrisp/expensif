@@ -2,7 +2,7 @@ import { initClientIp, initRateLimit } from "@/pkg/http/rate-limit";
 import type { ProxyKind } from "@/shared/proxy-ip";
 import { clientIpHeaderFor } from "@/shared/proxy-ip";
 
-export type PolicyName = "default" | "login" | "register";
+export type PolicyName = "default" | "login" | "register" | "changePassword" | "logoutAll";
 
 export interface RateLimitPolicy {
   limit: number;
@@ -19,6 +19,8 @@ const POLICIES: Record<PolicyName, RateLimitPolicy> = {
   default: { limit: 100, windowMs: 60_000 },
   login: { limit: 20, windowMs: 60_000 },
   register: { limit: 10, windowMs: 60_000 },
+  changePassword: { limit: 20, windowMs: 60_000 },
+  logoutAll: { limit: 20, windowMs: 60_000 },
 };
 
 /**
@@ -35,6 +37,8 @@ export function initRateLimiters(
     default: { ...POLICIES.default, ...overrides.default },
     login: { ...POLICIES.login, ...overrides.login },
     register: { ...POLICIES.register, ...overrides.register },
+    changePassword: { ...POLICIES.changePassword, ...overrides.changePassword },
+    logoutAll: { ...POLICIES.logoutAll, ...overrides.logoutAll },
   };
 
   const rateLimiters = {} as RateLimiters;

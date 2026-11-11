@@ -3,6 +3,7 @@ import { initApiKeyService } from "@/modules/api-key/service";
 import { initAuthRoutes } from "@/modules/auth/controllers/http";
 import { initAuthMiddleware } from "@/modules/auth/controllers/middleware";
 import { initAuthService } from "@/modules/auth/service";
+import { initAuthUseCase } from "@/modules/auth/use-case";
 import { registerExpenseCommands } from "@/modules/expense/controllers/bot";
 import { initExpenseService } from "@/modules/expense/service";
 import { registerLinkCommand } from "@/modules/linked-account/controllers/bot";
@@ -11,6 +12,7 @@ import { initLinkedAccountRoutes } from "@/modules/linked-account/controllers/ht
 import { initLinkedAccountService } from "@/modules/linked-account/service";
 import { initLinkedAccountUseCase } from "@/modules/linked-account/use-case";
 import type { LinkedAccountUseCase } from "@/modules/linked-account/use-case";
+import { initSessionService } from "@/modules/session/service";
 import { initUserRoutes } from "@/modules/user/controllers/http";
 import { initUserService } from "@/modules/user/service";
 import { initBot } from "@/pkg/bot/telegram";
@@ -19,6 +21,7 @@ import type { EnvSchema } from "@/pkg/env";
 import { initHttp } from "@/pkg/http";
 import type { Llm } from "@/pkg/llm";
 import type { Logger } from "@/pkg/logger";
+import { initScheduledJob } from "@/pkg/scheduler";
 import { initRateLimiters } from "@/shared/rate-limit";
 import type { RateLimitOverrides } from "@/shared/rate-limit";
 
@@ -31,6 +34,8 @@ interface InitAppParams {
 
 export function initApp({ env, db, logger, rateLimitOverrides }: InitAppParams) {
   const authService = initAuthService(env, db);
+  const sessionService = initSessionService(env, db);
+  const authUseCase = initAuthUseCase({ db, authService, sessionService });
   const apiKeyService = initApiKeyService(env, db);
   const linkedAccountService = initLinkedAccountService(db);
   const userService = initUserService(db);
@@ -47,7 +52,7 @@ export function initApp({ env, db, logger, rateLimitOverrides }: InitAppParams) 
   const rateLimiters = initRateLimiters(env.DEPLOY_PROXY, rateLimitOverrides);
   const authRoutes = initAuthRoutes({
     env,
-    authService,
+    authUseCase,
     userService,
     authMiddleware,
     rateLimiters,
@@ -70,13 +75,23 @@ export function initApp({ env, db, logger, rateLimitOverrides }: InitAppParams) 
 
   return {
     app,
+    jobs: {
+      sessionCleanup: initScheduledJob({
+        name: "session-cleanup",
+        intervalMs: 24 * 60 * 60 * 1000,
+        run: () => sessionService.cleanupExpiredSessions(),
+        logger,
+      }),
+    },
     services: {
       auth: authService,
+      session: sessionService,
       apiKey: apiKeyService,
       linkedAccount: linkedAccountService,
       user: userService,
     },
     useCases: {
+      auth: authUseCase,
       linkedAccount: linkedAccountUseCase,
     },
   };

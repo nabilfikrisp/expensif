@@ -4,9 +4,9 @@ import { SignJWT, jwtVerify } from "jose";
 import type { JWTPayload } from "jose";
 import { createHash, createHmac } from "node:crypto";
 
-import { AuthError, isTokenVerificationError } from "@/modules/auth/error";
+import { AuthError } from "@/modules/auth/error";
 import { users } from "@/modules/user/schema";
-import type { Db } from "@/pkg/db";
+import type { Db, DbTx, Tx } from "@/pkg/db";
 import { isUniqueConstraintError } from "@/pkg/db/error";
 import type { EnvSchema } from "@/pkg/env";
 
@@ -19,12 +19,12 @@ export function initAuthService(env: EnvSchema, db: Db) {
       const { payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] });
       return payload;
     },
-    async register(email: string, password: string, name: string) {
+    async register(email: string, password: string, name: string, tx: DbTx = db) {
       const id = crypto.randomUUID();
       const passwordHash = await hashPassword(password);
 
       try {
-        await db.insert(users).values({ id, email, passwordHash, name });
+        await tx.insert(users).values({ id, email, passwordHash, name });
       } catch (err: unknown) {
         if (isUniqueConstraintError(err)) {
           throw AuthError.emailAlreadyRegistered();
@@ -32,89 +32,43 @@ export function initAuthService(env: EnvSchema, db: Db) {
         throw err;
       }
 
-      const accessSecret = this.encodeSecret(env.JWT_SECRET, "access");
-      const refreshSecret = this.encodeSecret(env.JWT_SECRET, "refresh");
-
-      const accessToken = await signToken(
-        { sub: id },
-        accessSecret,
-        env.ACCESS_TOKEN_EXPIRES_IN_MINUTES
-      );
-      const refreshToken = await signToken(
-        { sub: id, type: "refresh" },
-        refreshSecret,
-        env.REFRESH_TOKEN_EXPIRES_IN_DAYS
-      );
-
-      const csrfToken = crypto.randomUUID();
-
-      return { accessToken, refreshToken, csrfToken };
+      return { userId: id };
     },
-    async login(email: string, password: string) {
-      const user = (await db.select().from(users).where(eq(users.email, email)).limit(1)).at(0);
-
-      if (!user) {
+    async login(email: string, password: string, tx: Tx) {
+      // Hold the user lock through session creation so password changes revoke racing logins.
+      const user = (
+        await tx.select().from(users).where(eq(users.email, email)).limit(1).for("share")
+      ).at(0);
+      if (!user || !(await verifyPassword(password, user.passwordHash))) {
         throw AuthError.invalidCredentials();
       }
+      return { userId: user.id };
+    },
 
-      const valid = await verifyPassword(password, user.passwordHash);
-      if (!valid) {
+    async verifyCurrentPassword(userId: string, currentPassword: string, tx: Tx) {
+      // Serialize account-wide revocation with login and password changes.
+      const user = (
+        await tx
+          .select({ passwordHash: users.passwordHash })
+          .from(users)
+          .where(eq(users.id, userId))
+          .for("update")
+      ).at(0);
+      if (!user || !(await verifyPassword(currentPassword, user.passwordHash))) {
         throw AuthError.invalidCredentials();
       }
-
-      const accessSecret = this.encodeSecret(env.JWT_SECRET, "access");
-      const refreshSecret = this.encodeSecret(env.JWT_SECRET, "refresh");
-
-      const accessToken = await signToken(
-        { sub: user.id },
-        accessSecret,
-        env.ACCESS_TOKEN_EXPIRES_IN_MINUTES
-      );
-      const refreshToken = await signToken(
-        { sub: user.id, type: "refresh" },
-        refreshSecret,
-        env.REFRESH_TOKEN_EXPIRES_IN_DAYS
-      );
-
-      const csrfToken = crypto.randomUUID();
-
-      return { accessToken, refreshToken, csrfToken };
     },
-    async refresh(token: string) {
-      const refreshSecret = this.encodeSecret(env.JWT_SECRET, "refresh");
-      let payload: JWTPayload;
-      try {
-        payload = await this.verifyToken(token, refreshSecret);
-      } catch (error) {
-        if (isTokenVerificationError(error)) {
-          throw AuthError.invalidToken();
-        }
-        throw error;
-      }
-      if (payload.type !== "refresh") {
-        throw AuthError.invalidToken();
-      }
-      if (payload.sub === undefined) {
-        throw AuthError.invalidToken();
-      }
 
-      const userId = payload.sub;
-      const accessSecret = this.encodeSecret(env.JWT_SECRET, "access");
+    async changePassword(userId: string, currentPassword: string, newPassword: string, tx: Tx) {
+      await this.verifyCurrentPassword(userId, currentPassword, tx);
+      const passwordHash = await hashPassword(newPassword);
+      await tx.update(users).set({ passwordHash }).where(eq(users.id, userId));
+    },
 
-      const accessToken = await signToken(
-        { sub: userId },
-        accessSecret,
-        env.ACCESS_TOKEN_EXPIRES_IN_MINUTES
-      );
-      const newRefreshToken = await signToken(
-        { sub: userId, type: "refresh" },
-        refreshSecret,
-        env.REFRESH_TOKEN_EXPIRES_IN_DAYS
-      );
+    async issueAccessToken(userId: string) {
+      const secret = this.encodeSecret(env.JWT_SECRET, "access");
 
-      const csrfToken = crypto.randomUUID();
-
-      return { accessToken, refreshToken: newRefreshToken, csrfToken };
+      return signToken({ sub: userId }, secret, env.ACCESS_TOKEN_EXPIRES_IN_MINUTES);
     },
   };
 }

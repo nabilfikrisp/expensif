@@ -1,7 +1,7 @@
 import { OpenAPIHono, createRoute } from "@hono/zod-openapi";
 
 import { AuthError } from "@/modules/auth/error";
-import type { AuthService } from "@/modules/auth/service";
+import type { AuthUseCase } from "@/modules/auth/use-case";
 import type { CookieJar } from "@/pkg/cookies";
 import { errorRespSchema, tokenRespSchema } from "@/shared/response.schema";
 
@@ -22,7 +22,7 @@ const refreshRoute = createRoute({
   },
 });
 
-export function initRefreshRoute(authService: AuthService, cookieJar: CookieJar) {
+export function initRefreshRoute(authUseCase: AuthUseCase, cookieJar: CookieJar) {
   const app = new OpenAPIHono();
 
   app.openapi(refreshRoute, async (c) => {
@@ -37,9 +37,11 @@ export function initRefreshRoute(authService: AuthService, cookieJar: CookieJar)
       throw AuthError.invalidCsrfToken();
     }
 
-    const { accessToken, refreshToken, csrfToken } = await authService.refresh(token);
-    cookieJar.setRefreshCookie(c, refreshToken);
-    cookieJar.setCsrfCookie(c, csrfToken);
+    const { accessToken, refresh } = await authUseCase.refreshSession(token);
+    if (refresh) {
+      cookieJar.setRefreshCookie(c, refresh.token, refresh.expiresAt);
+      cookieJar.setCsrfCookie(c, crypto.randomUUID(), refresh.expiresAt);
+    }
     return c.json({ success: true, message: "success", data: { accessToken } }, 200);
   });
 

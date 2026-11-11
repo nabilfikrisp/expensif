@@ -13,13 +13,16 @@ Copy `.env.example` to `.env` and fill in credentials.
 | `NODE_ENV`                        | `development`; also accepts `production` and `test`                |
 | `DEPLOY_PROXY`                    | `none`; also accepts `cloudflare` and `nginx`                      |
 | `DATABASE_URL`                    | Required PostgreSQL URL; example targets the development container |
+| `API_ORIGIN` | `http://localhost:3000`; exact API origin, no trailing slash; HTTPS in production |
+| `FRONTEND_ORIGIN` | `http://localhost:5173`; exact dashboard origin, no trailing slash; HTTPS and same-site with the API in production (for example `https://app.example.com` with `https://api.example.com`) |
 | `PORT`                            | `3000`, positive integer                                           |
 | `TELEGRAM_BOT_TOKEN`              | Required Telegram bot token                                        |
 | `OPENROUTER_API_KEY`              | Required OpenRouter API key                                        |
 | `OPENROUTER_MODEL`                | `openrouter/free`                                                  |
 | `JWT_SECRET`                      | Required, at least 32 characters                                   |
-| `ACCESS_TOKEN_EXPIRES_IN_MINUTES` | `15m`; despite the name, accepts a JWT duration string             |
-| `REFRESH_TOKEN_EXPIRES_IN_DAYS`   | `7d`; accepts a JWT duration string                                |
+| `ACCESS_TOKEN_EXPIRES_IN_MINUTES` | `5m`; despite the name, accepts a JWT duration string             |
+| `SESSION_IDLE_SECONDS` | `7200`, positive integer |
+| `SESSION_ABSOLUTE_SECONDS` | `86400`, positive integer |
 | `API_KEY_SECRET`                  | Required, at least 32 characters; separate from the JWT secret     |
 | `API_KEY_REDEEM_WINDOW_MINUTES`   | `15`, positive integer                                             |
 
@@ -33,7 +36,10 @@ Interactive documentation is at `/api/v1/docs`, with the schema at `/api/v1/doc`
 | --- | --- | --- |
 | POST | `/api/v1/auth/register` | Create an account. |
 | POST | `/api/v1/auth/login` | Sign in. |
+| GET | `/api/v1/auth/csrf` | Read the CSRF token for credentialed browser requests. |
 | POST | `/api/v1/auth/refresh` | Refresh authentication tokens. |
+| POST | `/api/v1/auth/change-password` | Change the password and revoke all refresh sessions. |
+| POST | `/api/v1/auth/logout-all` | Log out all devices, including the current session. |
 | POST | `/api/v1/auth/logout` | Sign out. |
 | GET | `/api/v1/auth/me` | Retrieve the current user. |
 | DELETE | `/api/v1/user/me` | Delete the current user. |
@@ -44,7 +50,7 @@ Interactive documentation is at `/api/v1/docs`, with the schema at `/api/v1/doc`
 | GET | `/api/v1/linked-account` | List owned linked accounts. |
 | DELETE | `/api/v1/linked-account/{id}` | Unlink an owned account. |
 
-Import the [Postman collection](../docs/expensif.postman_collection.json). Set `baseUrl`, register or log in to capture `accessToken`, and allow Postman's cookie jar to retain cookies. Refresh reads the CSRF cookie into its header. Set `apiKeyId` or `linkedAccountId` for mutation requests.
+Import the [Postman collection](../docs/expensif.postman_collection.json). Set `baseUrl`, register or log in to capture `accessToken`, and allow Postman's cookie jar to retain cookies. Refresh and logout read the CSRF cookie into their headers. Set `apiKeyId` or `linkedAccountId` for mutation requests.
 
 ## Telegram
 

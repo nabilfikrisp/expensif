@@ -14,7 +14,6 @@ export const expenses = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     categoryId: text("category_id").references(() => categories.id, { onDelete: "set null" }),
     itemName: text("item_name").notNull(),
-    // No scale coercion: the CHECK must see fractional input before PostgreSQL can round it.
     amount: numeric("amount").notNull(),
     currency: text("currency").notNull().default("IDR"),
     expenseDate: date("expense_date", { mode: "string" }).notNull(),

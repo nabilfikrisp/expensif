@@ -17,10 +17,15 @@ beforeEach(async () => ctx.resetDb());
 
 describe("PostgreSQL constraint error detection", () => {
   it("recognizes a real Drizzle unique violation without treating it as a foreign key error", async () => {
-    const user = { id: "owner", email: "owner@example.com", name: "Owner", passwordHash: "unused" };
+    const user = {
+      id: crypto.randomUUID(),
+      email: "owner@example.com",
+      name: "Owner",
+      passwordHash: "unused",
+    };
     await ctx.db.insert(users).values(user);
     const [result] = await Promise.allSettled([
-      ctx.db.insert(users).values({ ...user, id: "other" }),
+      ctx.db.insert(users).values({ ...user, id: crypto.randomUUID() }),
     ]);
     expect(result.status).toBe("rejected");
     if (result.status === "fulfilled") {
@@ -34,7 +39,7 @@ describe("PostgreSQL constraint error detection", () => {
     const [result] = await Promise.allSettled([
       ctx.db.insert(apiKeys).values({
         id: "orphan-key",
-        userId: "missing-owner",
+        userId: crypto.randomUUID(),
         keyHash: "hash",
         keyHint: "hint",
         expiresAt: "2026-11-07T00:00:00Z",

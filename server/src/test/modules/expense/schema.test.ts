@@ -6,7 +6,7 @@ import { expenses } from "@/modules/expense/schema";
 import { users } from "@/modules/user/schema";
 
 let ctx: Awaited<ReturnType<typeof initTestDb>>;
-const userId = "expense-owner";
+const userId = crypto.randomUUID();
 
 beforeAll(async () => {
   ctx = await initTestDb();

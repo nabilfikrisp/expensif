@@ -11,14 +11,32 @@ const env = initEnv();
 const { db, client } = initDb(env.DATABASE_URL);
 const logger = initLogger(env);
 const llm = initLlm(env.OPENROUTER_API_KEY, env.OPENROUTER_MODEL);
-const { app, useCases } = initApp({ env, db, logger });
+const { app, useCases, jobs } = initApp({ env, db, logger });
 const bot = initBotApp({ env, db, logger, llm, linkedAccountUseCase: useCases.linkedAccount });
 
+await jobs.sessionCleanup.start();
 const httpServer = startHttp(app, logger, env.PORT);
 startBot(bot, logger);
 
 process.on(
   "SIGTERM",
-  () => void shutdown("SIGTERM", { logger, bot, httpServer, dbClient: client })
+  () =>
+    void shutdown("SIGTERM", {
+      logger,
+      bot,
+      httpServer,
+      dbClient: client,
+      stopJobs: () => jobs.sessionCleanup.stop(),
+    })
 );
-process.on("SIGINT", () => void shutdown("SIGINT", { logger, bot, httpServer, dbClient: client }));
+process.on(
+  "SIGINT",
+  () =>
+    void shutdown("SIGINT", {
+      logger,
+      bot,
+      httpServer,
+      dbClient: client,
+      stopJobs: () => jobs.sessionCleanup.stop(),
+    })
+);

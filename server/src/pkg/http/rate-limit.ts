@@ -1,6 +1,7 @@
 import { getConnInfo } from "@hono/node-server/conninfo";
 
 import type { Context } from "hono";
+import type { BlankEnv } from "hono/types";
 import { rateLimiter } from "hono-rate-limiter";
 
 export interface RateLimitOptions {
@@ -14,7 +15,7 @@ export interface RateLimitOptions {
  * Policy names and policy-specific values belong in the shared layer.
  */
 export function initRateLimit({ limit, windowMs, keyGenerator }: RateLimitOptions) {
-  return rateLimiter({
+  return rateLimiter<BlankEnv>({
     limit,
     windowMs,
     keyGenerator,

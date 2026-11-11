@@ -1,18 +1,20 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { initTest, mockUser } from "../../../../helper";
+import { initTest, mockUser, withSessionWritesBlocked } from "../../../../helper";
 
 import { registerRespSchema } from "@/modules/auth/controllers/http/register";
 import { AuthError } from "@/modules/auth/error";
+import { sessions, users } from "@/pkg/db/schema";
 import { API_PREFIX } from "@/pkg/http";
 import { errorRespSchema } from "@/shared/response.schema";
 
+let ctx: Awaited<ReturnType<typeof initTest>>;
 let app: OpenAPIHono;
 let resetDb: () => Promise<void>;
 
 beforeAll(async () => {
-  const ctx = await initTest();
+  ctx = await initTest();
   app = ctx.app;
   resetDb = ctx.resetDb;
   return () => ctx.client.end();
@@ -23,6 +25,26 @@ beforeEach(async () => {
 });
 
 describe(`POST ${API_PREFIX}/auth/register`, () => {
+  it("rolls back the user and sends no cookies when PostgreSQL rejects session creation", async () => {
+    await withSessionWritesBlocked(ctx, async (blockedApp) => {
+      const response = await blockedApp.request(`${API_PREFIX}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(mockUser),
+      });
+      expect(response.status).toBe(500);
+      expect(errorRespSchema.parse(await response.json()).success).toBe(false);
+      expect(response.headers.getSetCookie()).toEqual([]);
+    });
+    expect(await ctx.db.select().from(users)).toEqual([]);
+    expect(await ctx.db.select().from(sessions)).toEqual([]);
+    const retry = await app.request(`${API_PREFIX}/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(mockUser),
+    });
+    expect(retry.status).toBe(201);
+  });
   it.each([
     ["too short", "pass123", "INVALID_PASSWORD_MIN_LENGTH"],
     ["too long", "a".repeat(129), "INVALID_PASSWORD_MAX_LENGTH"],

@@ -22,7 +22,7 @@ Expensif is a multi-user expense tracker. Users send natural-language expense me
 
 ## Initial scope
 
-The target includes authentication, account linking, message and expense storage, expense APIs, a web dashboard, bot corrections, and multiple items per message. The chosen logout behavior is recorded [below](#why-a-particular-logout-scope); the unimplemented design remains a [separate proposal](session-revocation.md).
+The target includes authentication, account linking, message and expense storage, expense APIs, a web dashboard, bot corrections, and multiple items per message. The chosen logout behavior is recorded [below](#why-a-particular-logout-scope); remaining authentication work is tracked in [authentication follow-up](auth-follow-up.md).
 
 Budgeting, reporting, and edit history are outside the initial scope.
 

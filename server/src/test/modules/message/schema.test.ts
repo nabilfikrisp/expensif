@@ -8,7 +8,7 @@ import { messages } from "@/modules/message/schema";
 import { users } from "@/modules/user/schema";
 
 let ctx: Awaited<ReturnType<typeof initTestDb>>;
-const userId = "message-owner";
+const userId = crypto.randomUUID();
 
 beforeAll(async () => {
   ctx = await initTestDb();

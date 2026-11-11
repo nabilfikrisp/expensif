@@ -34,27 +34,25 @@ function useMiddleware(app: OpenAPIHono, logger: Logger, defaultLimiter: RateLim
   );
 }
 
-function useCors(app: OpenAPIHono) {
+function useCors(app: OpenAPIHono, env: EnvSchema) {
+  const allowedOrigins = new Set([env.API_ORIGIN, env.FRONTEND_ORIGIN]);
+  app.use(async (c, next) => {
+    const origin = c.req.header("Origin");
+    if (origin !== undefined && !allowedOrigins.has(origin)) {
+      return c.json(
+        { success: false, message: "Origin is not allowed", error: "ORIGIN_NOT_ALLOWED" },
+        403
+      );
+    }
+    // Non-browser clients may omit Origin; refresh and logout still require CSRF proof.
+    await next();
+  });
   app.use(
     cors({
-      origin: (origin, c) => {
-        if (!origin) {
-          return origin;
-        }
-
-        const protocol = c.req.header("x-forwarded-proto") ?? "http";
-        const host = c.req.header("host");
-        const serverOrigin = `${protocol}://${host}`;
-
-        const allowedOrigins = [serverOrigin];
-
-        if (allowedOrigins.includes(origin)) {
-          return origin;
-        }
-
-        return "";
-      },
+      origin: (origin) => (allowedOrigins.has(origin) ? origin : ""),
       credentials: true,
+      allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+      allowHeaders: ["Content-Type", "Authorization", "X-CSRF-Token"],
     })
   );
 }
@@ -109,7 +107,7 @@ export function initHttp(
   const app = new OpenAPIHono();
 
   useMiddleware(app, logger, opts.defaultLimiter);
-  useCors(app);
+  useCors(app, env);
   useOpenAPI(app);
 
   app.get("/", (c) => c.text(`Hello Hono is running in port: ${env.PORT}!`));

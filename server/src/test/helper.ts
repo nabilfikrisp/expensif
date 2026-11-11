@@ -1,12 +1,23 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
 import { sql } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 
 import { initApp } from "@/app";
 import { generateApiKeyRespSchema } from "@/modules/api-key/controllers/http/generate";
 import { listLinkedAccountsRespSchema } from "@/modules/linked-account/controllers/http/list";
 import { initDb } from "@/pkg/db";
 import type { DbClient } from "@/pkg/db";
-import { apiKeys, categories, expenses, linkedAccounts, messages, users } from "@/pkg/db/schema";
+import { relations } from "@/pkg/db/relations";
+import {
+  apiKeys,
+  categories,
+  expenses,
+  linkedAccounts,
+  messages,
+  sessions,
+  users,
+} from "@/pkg/db/schema";
 import type { EnvSchema } from "@/pkg/env";
 import { API_PREFIX } from "@/pkg/http";
 import { initLogger } from "@/pkg/logger";
@@ -63,7 +74,7 @@ export async function initTestDb() {
       ...database,
       resetDb: async () => {
         await database.db.execute(
-          sql`TRUNCATE TABLE ${users}, ${categories}, ${messages}, ${expenses}, ${linkedAccounts}, ${apiKeys}`
+          sql`TRUNCATE TABLE ${users}, ${categories}, ${messages}, ${expenses}, ${linkedAccounts}, ${apiKeys}, ${sessions}`
         );
       },
     };
@@ -79,9 +90,12 @@ function buildEnv(): EnvSchema {
     DATABASE_URL: TEST_DATABASE_URL,
     PORT: 0,
     DEPLOY_PROXY: "none",
+    API_ORIGIN: "http://localhost:3000",
+    FRONTEND_ORIGIN: "http://localhost:5173",
     JWT_SECRET: "test-secret-must-be-at-least-32-characters",
     ACCESS_TOKEN_EXPIRES_IN_MINUTES: "15m",
-    REFRESH_TOKEN_EXPIRES_IN_DAYS: "7d",
+    SESSION_IDLE_SECONDS: 7200,
+    SESSION_ABSOLUTE_SECONDS: 86400,
     TELEGRAM_BOT_TOKEN: "dummy",
     OPENROUTER_API_KEY: "dummy",
     OPENROUTER_MODEL: "dummy",
@@ -102,6 +116,8 @@ export async function initTest() {
         default: { limit: 1000, windowMs: 60_000 },
         login: { limit: 1000, windowMs: 60_000 },
         register: { limit: 1000, windowMs: 60_000 },
+        changePassword: { limit: 1000, windowMs: 60_000 },
+        logoutAll: { limit: 1000, windowMs: 60_000 },
       },
     });
     return { ...database, env, ...app };
@@ -179,4 +195,49 @@ export async function createLinkedUser(ctx: Awaited<ReturnType<typeof initTest>>
     throw new Error("Expected one linked account");
   }
   return { headers, account: data[0] };
+}
+
+export function sessionHeaders(tokens: { refreshToken: string; csrfToken: string }) {
+  return {
+    Cookie: `refresh_token=${tokens.refreshToken}; csrf_token=${tokens.csrfToken}`,
+    "X-CSRF-Token": tokens.csrfToken,
+  };
+}
+
+export function sessionCookies(response: Response) {
+  function value(name: string) {
+    const cookie = response.headers.getSetCookie().find((item) => item.startsWith(`${name}=`));
+    if (!cookie || cookie.includes("Max-Age=0")) {
+      throw new Error(`Expected live ${name} cookie`);
+    }
+    return cookie.split(";")[0].slice(name.length + 1);
+  }
+  return { refreshToken: value("refresh_token"), csrfToken: value("csrf_token") };
+}
+
+// A real PostgreSQL lock timeout exercises HTTP error handling and transaction rollback.
+export async function withSessionWritesBlocked(
+  ctx: Awaited<ReturnType<typeof initTest>>,
+  run: (app: OpenAPIHono) => Promise<void>
+) {
+  const client = new Pool({
+    connectionString: TEST_DATABASE_URL,
+    max: 1,
+    connectionTimeoutMillis: 5000,
+    options: "-c lock_timeout=100ms",
+  });
+  try {
+    await assertTestDatabase(client);
+    const { app } = initApp({
+      env: ctx.env,
+      db: drizzle({ client, relations }),
+      logger: initLogger(ctx.env),
+    });
+    await ctx.db.transaction(async (tx) => {
+      await tx.execute(sql`LOCK TABLE ${sessions} IN SHARE MODE`);
+      await run(app);
+    });
+  } finally {
+    await client.end();
+  }
 }

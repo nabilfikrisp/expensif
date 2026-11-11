@@ -22,7 +22,6 @@ function refreshCookieOptions(env: EnvSchema): CookieOptions {
   return {
     ...baseCookieOptions(env),
     httpOnly: true,
-    maxAge: 7 * 86400,
   };
 }
 
@@ -30,7 +29,6 @@ function csrfCookieOptions(env: EnvSchema): CookieOptions {
   return {
     ...baseCookieOptions(env),
     path: "/",
-    maxAge: 7 * 86400,
   };
 }
 
@@ -39,16 +37,16 @@ export function initCookieJar(env: EnvSchema) {
   const csrfOpts = csrfCookieOptions(env);
 
   return {
-    setRefreshCookie: (c: Context, token: string) => {
-      setCookie(c, REFRESH_TOKEN_COOKIE, token, refreshOpts);
+    setRefreshCookie: (c: Context, token: string, expiresAt: string) => {
+      setCookie(c, REFRESH_TOKEN_COOKIE, token, { ...refreshOpts, expires: new Date(expiresAt) });
     },
     getRefreshCookie: (c: Context) => getCookie(c, REFRESH_TOKEN_COOKIE),
     clearRefreshCookie: (c: Context) => {
       deleteCookie(c, REFRESH_TOKEN_COOKIE, { path: refreshOpts.path });
     },
 
-    setCsrfCookie: (c: Context, token: string) => {
-      setCookie(c, CSRF_TOKEN_COOKIE, token, csrfOpts);
+    setCsrfCookie: (c: Context, token: string, expiresAt: string) => {
+      setCookie(c, CSRF_TOKEN_COOKIE, token, { ...csrfOpts, expires: new Date(expiresAt) });
       // Remove the old API-scoped cookie so it cannot shadow the dashboard cookie.
       deleteCookie(c, CSRF_TOKEN_COOKIE, { path: AUTH_PATH });
     },

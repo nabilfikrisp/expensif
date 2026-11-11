@@ -3,7 +3,7 @@
     "_postman_id": "488f7fc1-3fcc-462b-a211-b5122c725ae2",
     "name": "Expensif API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Local API requests. Register or log in first; the collection captures accessToken. Keep the cookie jar enabled for refresh. API keys are only for Telegram linking. Logout clears cookies but does not revoke JWTs."
+    "description": "Local API requests. Register or log in first; the collection captures accessToken. Keep the cookie jar enabled for refresh. API keys are only for Telegram linking. Logout revokes the current refresh session and clears cookies; access JWTs expire naturally."
   },
   "auth": {
     "type": "bearer",
@@ -151,13 +151,30 @@
           "name": "Logout",
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [
+              {
+                "key": "X-CSRF-Token",
+                "value": "{{csrfToken}}"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/auth/logout",
             "auth": {
               "type": "noauth"
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const csrf = pm.cookies.get(\"csrf_token\");",
+                  "pm.variables.set(\"csrfToken\", csrf || \"\");"
+                ]
+              }
+            }
+          ]
         }
       ]
     },

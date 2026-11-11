@@ -1,6 +1,6 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 
-import type { AuthService } from "@/modules/auth/service";
+import type { AuthUseCase } from "@/modules/auth/use-case";
 import type { CookieJar } from "@/pkg/cookies";
 import type { RateLimitMiddleware } from "@/shared/rate-limit";
 import { errorRespSchema, tokenRespSchema } from "@/shared/response.schema";
@@ -16,7 +16,7 @@ export const registerReqSchema = z
 export const registerRespSchema = tokenRespSchema;
 
 export function initRegisterRoute(
-  authService: AuthService,
+  authUseCase: AuthUseCase,
   cookieJar: CookieJar,
   rateLimiter: RateLimitMiddleware
 ) {
@@ -45,9 +45,9 @@ export function initRegisterRoute(
 
   app.openapi(registerRoute, async (c) => {
     const { email, password, name } = c.req.valid("json");
-    const result = await authService.register(email, password, name);
-    cookieJar.setRefreshCookie(c, result.refreshToken);
-    cookieJar.setCsrfCookie(c, result.csrfToken);
+    const result = await authUseCase.register(email, password, name);
+    cookieJar.setRefreshCookie(c, result.refreshToken, result.expiresAt);
+    cookieJar.setCsrfCookie(c, crypto.randomUUID(), result.expiresAt);
     return c.json(
       { success: true, message: "success", data: { accessToken: result.accessToken } },
       201

@@ -1,9 +1,5 @@
-import { SignJWT, errors as joseErrors } from "jose";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-
-import { initTest } from "../../helper";
-
-import { AuthError } from "@/modules/auth/error";
+import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { initTest, mockUser } from "../../helper";
 
 let ctx: Awaited<ReturnType<typeof initTest>>;
 
@@ -11,53 +7,40 @@ beforeAll(async () => {
   ctx = await initTest();
   return () => ctx.client.end();
 });
+beforeEach(async () => ctx.resetDb());
 
-afterEach(() => vi.restoreAllMocks());
-
-describe("AuthService.refresh", () => {
-  it.each([
-    ["expired", { exp: 0 }],
-    ["not yet valid", { nbf: 4102444800 }],
-    ["missing subject", { sub: undefined }],
-    ["wrong token type", { type: "access" }],
-  ])("rejects a token that is %s", async (_description, claims) => {
-    const secret = ctx.services.auth.encodeSecret(ctx.env.JWT_SECRET, "refresh");
-    const token = await new SignJWT({ sub: "user-id", type: "refresh", ...claims })
-      .setProtectedHeader({ alg: "HS256" })
-      .sign(secret);
-
-    await expect(ctx.services.auth.refresh(token)).rejects.toMatchObject({
-      code: AuthError.invalidToken().code,
+describe("AuthService", () => {
+  it("registers and authenticates without issuing refresh JWTs", async () => {
+    const registered = await ctx.services.auth.register(
+      mockUser.email,
+      mockUser.password,
+      mockUser.name
+    );
+    expect(
+      await ctx.db.transaction((tx) =>
+        ctx.services.auth.login(mockUser.email, mockUser.password, tx)
+      )
+    ).toEqual(registered);
+    await expect(
+      ctx.db.transaction((tx) => ctx.services.auth.login(mockUser.email, "incorrect", tx))
+    ).rejects.toMatchObject({
+      code: "INVALID_CREDENTIALS",
     });
+    await expect(
+      ctx.db.transaction((tx) =>
+        ctx.services.auth.login("unknown@example.com", mockUser.password, tx)
+      )
+    ).rejects.toMatchObject({ code: "INVALID_CREDENTIALS" });
   });
 
-  it("rejects malformed tokens, invalid signatures, and disallowed algorithms", async () => {
+  it("issues an access JWT with the configured lifetime and access secret", async () => {
     const { auth } = ctx.services;
-    const secret = auth.encodeSecret(ctx.env.JWT_SECRET, "refresh");
-    const wrongSecret = auth.encodeSecret(ctx.env.JWT_SECRET);
-    const tokens = [
-      "invalid-token-value",
-      await new SignJWT({ sub: "user-id", type: "refresh" })
-        .setProtectedHeader({ alg: "HS256" })
-        .sign(wrongSecret),
-      await new SignJWT({ sub: "user-id", type: "refresh" })
-        .setProtectedHeader({ alg: "HS384" })
-        .sign(secret),
-    ];
-
-    for (const token of tokens) {
-      await expect(auth.refresh(token)).rejects.toMatchObject({
-        code: AuthError.invalidToken().code,
-      });
+    const token = await auth.issueAccessToken("user-id");
+    const payload = await auth.verifyToken(token, auth.encodeSecret(ctx.env.JWT_SECRET));
+    expect(payload.sub).toBe("user-id");
+    if (payload.exp === undefined || payload.iat === undefined) {
+      throw new Error("Missing access token timestamps");
     }
+    expect(payload.exp - payload.iat).toBe(15 * 60);
   });
-
-  it.each([new Error("unexpected verifier failure"), new joseErrors.JOSENotSupported()])(
-    "rethrows the original unexpected verification error: %s",
-    async (error) => {
-      vi.spyOn(ctx.services.auth, "verifyToken").mockRejectedValue(error);
-
-      await expect(ctx.services.auth.refresh("any-value")).rejects.toBe(error);
-    }
-  );
 });
