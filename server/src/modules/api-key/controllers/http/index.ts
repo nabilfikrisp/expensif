@@ -1,15 +1,13 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
-import type { ContentfulStatusCode } from "hono/utils/http-status";
 
 import { initDeleteApiKeyRoute } from "./delete";
 import { initGenerateApiKeyRoute } from "./generate";
 import { initListApiKeysRoute } from "./list";
 import { initRevokeApiKeyRoute } from "./revoke";
 
-import { ApiKeyError } from "@/modules/api-key/error";
 import type { ApiKeyService } from "@/modules/api-key/service";
 import type { AuthMiddleware } from "@/modules/auth/controllers/middleware";
-import { AuthError } from "@/modules/auth/error";
+import { handleDomainError } from "@/shared/handle-domain-error";
 
 export function initApiKeyRoutes(apiKeyService: ApiKeyService, authMiddleware: AuthMiddleware) {
   const app = new OpenAPIHono();
@@ -26,19 +24,7 @@ export function initApiKeyRoutes(apiKeyService: ApiKeyService, authMiddleware: A
   const deleteApiKeyRoute = initDeleteApiKeyRoute({ apiKeyService, authMiddleware });
   app.route("/", deleteApiKeyRoute);
 
-  app.onError((err, c) => {
-    if (err instanceof ApiKeyError || err instanceof AuthError) {
-      return c.json(
-        {
-          success: false,
-          message: err.message,
-          error: err.code,
-        },
-        err.statusCode as ContentfulStatusCode
-      );
-    }
-    throw err;
-  });
+  app.onError(handleDomainError);
 
   return app;
 }

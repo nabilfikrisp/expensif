@@ -34,7 +34,11 @@ describe(`POST ${API_PREFIX}/auth/register`, () => {
         body: JSON.stringify(mockUser),
       });
       expect(response.status).toBe(500);
-      expect(errorRespSchema.parse(await response.json()).success).toBe(false);
+      expect(errorRespSchema.parse(await response.json())).toEqual({
+        success: false,
+        message: "Internal server error",
+        error: "INTERNAL_SERVER_ERROR",
+      });
       expect(response.headers.getSetCookie()).toEqual([]);
     });
     expect(await ctx.db.select().from(users)).toEqual([]);

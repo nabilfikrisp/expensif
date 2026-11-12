@@ -1,5 +1,4 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
-import type { ContentfulStatusCode } from "hono/utils/http-status";
 
 import { initChangePasswordRoute } from "./change-password";
 import { initCsrfRoute } from "./csrf";
@@ -11,12 +10,11 @@ import { initRefreshRoute } from "./refresh";
 import { initRegisterRoute } from "./register";
 
 import type { AuthMiddleware } from "@/modules/auth/controllers/middleware";
-import { AuthError } from "@/modules/auth/error";
 import type { AuthUseCase } from "@/modules/auth/use-case";
-import { UserError } from "@/modules/user/error";
 import type { UserService } from "@/modules/user/service";
 import { initCookieJar } from "@/pkg/cookies";
 import type { EnvSchema } from "@/pkg/env";
+import { handleDomainError } from "@/shared/handle-domain-error";
 import type { RateLimiters } from "@/shared/rate-limit";
 
 export interface InitAuthRoutesDeps {
@@ -66,19 +64,7 @@ export function initAuthRoutes({
   const meRoute = initMeRoute({ userService, authMiddleware });
   app.route("/", meRoute);
 
-  app.onError((err, c) => {
-    if (err instanceof AuthError || err instanceof UserError) {
-      return c.json(
-        {
-          success: false,
-          message: err.message,
-          error: err.code,
-        },
-        err.statusCode as ContentfulStatusCode
-      );
-    }
-    throw err;
-  });
+  app.onError(handleDomainError);
 
   return app;
 }

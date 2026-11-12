@@ -1,13 +1,11 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
-import type { ContentfulStatusCode } from "hono/utils/http-status";
 
 import { initDeleteLinkedAccountRoute } from "./delete";
 import { initListLinkedAccountsRoute } from "./list";
 
 import type { AuthMiddleware } from "@/modules/auth/controllers/middleware";
-import { AuthError } from "@/modules/auth/error";
-import { LinkedAccountError } from "@/modules/linked-account/error";
 import type { LinkedAccountService } from "@/modules/linked-account/service";
+import { handleDomainError } from "@/shared/handle-domain-error";
 
 export function initLinkedAccountRoutes(
   linkedAccountService: LinkedAccountService,
@@ -27,19 +25,7 @@ export function initLinkedAccountRoutes(
   });
   app.route("/", deleteLinkedAccountRoute);
 
-  app.onError((err, c) => {
-    if (err instanceof LinkedAccountError || err instanceof AuthError) {
-      return c.json(
-        {
-          success: false,
-          message: err.message,
-          error: err.code,
-        },
-        err.statusCode as ContentfulStatusCode
-      );
-    }
-    throw err;
-  });
+  app.onError(handleDomainError);
 
   return app;
 }

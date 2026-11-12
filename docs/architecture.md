@@ -14,7 +14,7 @@ Changes to these rules require a maintainer decision.
 1. Assemble dependencies through `init*` factories in [app.ts](../server/src/app.ts) and [index.ts](../server/src/index.ts). Inject service and database instances; never import them directly. Type and factory imports are allowed.
 2. Controllers own request/response contracts, transport validation, coercion, defaults, API metadata, authentication middleware, and responses. Services own operations.
 3. Use cases own transactions spanning several services; see [linked-account/use-case.ts](../server/src/modules/linked-account/use-case.ts).
-4. Domain errors carry machine-readable codes and are mapped at the route boundary. Unknown errors propagate; see the [API-key route boundary](../server/src/modules/api-key/controllers/http/index.ts).
+4. Domain errors carry machine-readable codes and HTTP statuses. Route modules use the [shared domain-error handler](../server/src/shared/handle-domain-error.ts) to serialize them at the HTTP boundary. Unknown errors propagate.
 5. Follow the applicable parts of the [API-key reference module](../server/src/modules/api-key/) for new modules; do not create unused files.
 6. Follow the [fail-loudly rules](../AGENTS.md#fail-loudly). Any component startup failure, including the bot, must fail the process.
 7. A controller calls either services or use cases, never both. Once it uses use cases, it continues using use cases.
