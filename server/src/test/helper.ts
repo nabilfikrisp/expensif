@@ -31,14 +31,14 @@ import { initLogger } from "@/pkg/logger";
 export const mockUser = { email: "test@example.com", password: "pass1234", name: "Test User" };
 
 const TEST_DATABASE_URL =
-  "postgres://expensif_test:local_test_password@127.0.0.1:5433/expensif_test";
+  "postgres://expensif_test:local_test_password@127.0.0.1:5434/expensif_test";
 
 async function assertTestDatabase(client: DbClient) {
   const url = new URL(TEST_DATABASE_URL);
   if (
     url.protocol !== "postgres:" ||
     url.hostname !== "127.0.0.1" ||
-    url.port !== "5433" ||
+    url.port !== "5434" ||
     url.pathname !== "/expensif_test" ||
     url.username !== "expensif_test" ||
     url.search !== ""
@@ -66,9 +66,7 @@ export async function initTestDb() {
     throw new Error(
       [
         "Cannot connect to the configured PostgreSQL test database.",
-        "Stop the development database and start the test database from the repository root:",
-        "  docker compose -f docker/compose.yml down",
-        "  docker compose -f docker/compose.test.yml up -d --wait",
+        "Run tests through pnpm test:run or pnpm test from server/ to manage the test database.",
       ].join("\n"),
       { cause: error }
     );

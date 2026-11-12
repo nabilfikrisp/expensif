@@ -68,4 +68,4 @@ pnpm lintformat
 pnpm test:run
 ```
 
-`dev` enables grammY debug output. `start` runs the built server; apply migrations separately first. The dedicated test database must be running for `test:run`; [test setup](../README.md#checks-and-tests) explains how to switch containers safely.
+`dev` enables grammY debug output. `start` runs the built server; apply migrations separately first. `test:run` and `test` manage the dedicated test database automatically; [test setup](../README.md#checks-and-tests) covers requirements and recovery.

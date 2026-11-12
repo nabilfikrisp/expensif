@@ -3,7 +3,7 @@ import baseConfig from "@hono/eslint-config";
 export default [
   ...baseConfig,
   {
-    ignores: ["drizzle.config.ts"],
+    ignores: ["**/*", "!src/", "!src/**", "!scripts/", "!scripts/**"],
   },
   {
     languageOptions: {

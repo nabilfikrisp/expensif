@@ -46,17 +46,14 @@ Review and commit the generated migration alongside the schema change. If a migr
 pnpm --dir server lintformat
 ```
 
-Integration tests use a dedicated PostgreSQL database. Development and test containers both bind `127.0.0.1:5433`, so stop the development server and switch databases before testing:
+Integration tests use a dedicated PostgreSQL database on `127.0.0.1:5434`; development remains on port 5433. The test runner starts the test container, waits for readiness, and stops it when tests finish or are interrupted. Docker must be available:
 
 ```sh
-pnpm db:dev:down
-pnpm db:test:up
 pnpm --dir server test:run
-pnpm db:test:down
-pnpm db:dev:up
+pnpm --dir server test
 ```
 
-Tests truncate application tables: use only the dedicated test database. Tests do not require real Telegram or OpenRouter credentials. Use the server test command above; root `pnpm test` is a placeholder.
+Tests truncate application tables: use only the dedicated test database. Tests do not require real Telegram or OpenRouter credentials. `test` keeps the database running until watch mode exits; both commands accept Vitest arguments. The runner refuses an already running test container or an overlapping run. Stop a manually started test container with `pnpm db:test:down` before using the runner. After forced termination, stop the test container and remove `server/node_modules/.cache/expensif-test.lock` before retrying. Use the server test commands above; root `pnpm test` is a placeholder.
 
 ## Documentation
 

@@ -8,7 +8,7 @@ This file routes repository work and defines mandatory working rules.
 - Always use pnpm.
 - Never run `drizzle-kit push` or `db:push`. Generate SQL migrations with `drizzle-kit generate`, have the maintainer commit them, then apply with `drizzle-kit migrate`. Never change the database schema directly. If an existing migration covers the change, migrate only; do not regenerate.
 - Every migration requires explicit maintainer approval before implementation or execution, even when the database is empty. Approval applies only to that migration; it does not authorize future migrations.
-- Tests use real PostgreSQL and truncate application tables: run only against the test database. Development and test databases share host port 5433; never run both together. Setup: [README](README.md#checks-and-tests).
+- Tests use real PostgreSQL and truncate application tables: run only against the test database. Development uses host port 5433; tests use 5434. Use the test runner to manage the test database lifecycle. Setup: [README](README.md#checks-and-tests).
 
 ## Work correctly
 
