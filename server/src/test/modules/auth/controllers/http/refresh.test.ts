@@ -68,6 +68,8 @@ describe(`POST ${API_PREFIX}/auth/refresh`, () => {
   it("concurrent refreshes rotate once and return usable access tokens without grace cookies", async () => {
     const original = await registerAndGetToken(app, mockUser);
     const [before] = await ctx.db.select().from(sessions);
+    expect(before.tokenHash).toBe(createHash("sha256").update(original.refreshToken).digest("hex"));
+    expect(Buffer.from(original.refreshToken, "base64url")).toHaveLength(32);
     const responses = await Promise.all([refresh(original), refresh(original), refresh(original)]);
     for (const response of responses) {
       expect(response.status).toBe(200);
@@ -272,25 +274,6 @@ describe(`POST ${API_PREFIX}/auth/refresh`, () => {
     expect(newCsrfToken).not.toBe(csrfToken);
   });
 
-  it("does not replace cookies when accepting the previous token within grace", async () => {
-    const { refreshToken, csrfToken } = await registerAndGetToken(app, mockUser);
-    const request = {
-      method: "POST",
-      headers: {
-        Cookie: `refresh_token=${refreshToken}; csrf_token=${csrfToken}`,
-        "X-CSRF-Token": csrfToken,
-      },
-    };
-    const first = await app.request(`${API_PREFIX}/auth/refresh`, request);
-    expect(first.status).toBe(200);
-    expect(first.headers.getSetCookie().some((cookie) => cookie.startsWith("refresh_token="))).toBe(
-      true
-    );
-    const grace = await app.request(`${API_PREFIX}/auth/refresh`, request);
-    expect(grace.status).toBe(200);
-    expect(grace.headers.getSetCookie()).toEqual([]);
-  });
-
   it("returns 401 without refresh cookie", async () => {
     const res = await app.request(`${API_PREFIX}/auth/refresh`, {
       method: "POST",
@@ -301,56 +284,5 @@ describe(`POST ${API_PREFIX}/auth/refresh`, () => {
     const response = errorRespSchema.parse(respBody);
     expect(response.success).toBe(false);
     expect(response.message).toBe(AuthError.invalidToken().message);
-  });
-
-  it("returns 401 with invalid refresh token", async () => {
-    const { csrfToken } = await registerAndGetToken(app, mockUser);
-
-    const res = await app.request(`${API_PREFIX}/auth/refresh`, {
-      method: "POST",
-      headers: {
-        Cookie: `refresh_token=invalid-token-value; csrf_token=${csrfToken}`,
-        "X-CSRF-Token": csrfToken,
-      },
-    });
-
-    expect(res.status).toBe(401);
-    const respBody: unknown = await res.json();
-    const response = errorRespSchema.parse(respBody);
-    expect(response.success).toBe(false);
-    expect(response.message).toBe(AuthError.invalidToken().message);
-  });
-
-  it("returns 403 when CSRF header is missing", async () => {
-    const { refreshToken, csrfToken } = await registerAndGetToken(app, mockUser);
-
-    const res = await app.request(`${API_PREFIX}/auth/refresh`, {
-      method: "POST",
-      headers: { Cookie: `refresh_token=${refreshToken}; csrf_token=${csrfToken}` },
-    });
-
-    expect(res.status).toBe(403);
-    const respBody: unknown = await res.json();
-    const response = errorRespSchema.parse(respBody);
-    expect(response.success).toBe(false);
-    expect(response.message).toBe(AuthError.invalidCsrfToken().message);
-  });
-
-  it("returns 403 when CSRF header mismatches cookie", async () => {
-    const { refreshToken, csrfToken } = await registerAndGetToken(app, mockUser);
-
-    const res = await app.request(`${API_PREFIX}/auth/refresh`, {
-      method: "POST",
-      headers: {
-        Cookie: `refresh_token=${refreshToken}; csrf_token=${csrfToken}`,
-        "X-CSRF-Token": "wrong-csrf-value",
-      },
-    });
-
-    expect(res.status).toBe(403);
-    const respBody: unknown = await res.json();
-    const response = errorRespSchema.parse(respBody);
-    expect(response.success).toBe(false);
-    expect(response.message).toBe(AuthError.invalidCsrfToken().message);
   });
 });

@@ -1,12 +1,16 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { createApiKey, initTest, registerAndGetToken, mockUser } from "../../../../helper";
+import {
+  testBearerAuthentication,
+  createApiKey,
+  initTest,
+  registerAndGetToken,
+  mockUser,
+} from "../../../../helper";
 
 import { listApiKeysRespSchema } from "@/modules/api-key/controllers/http/list";
-import { AuthError } from "@/modules/auth/error";
 import { API_PREFIX } from "@/pkg/http";
-import { errorRespSchema } from "@/shared/response.schema";
 
 let app: OpenAPIHono;
 let resetDb: () => Promise<void>;
@@ -23,6 +27,8 @@ beforeEach(async () => {
 });
 
 describe(`GET ${API_PREFIX}/api-key`, () => {
+  testBearerAuthentication(() => app, "GET", "/api-key");
+
   it("documents query defaults and numeric constraints in OpenAPI", async () => {
     const res = await app.request(`${API_PREFIX}/doc`);
     expect(res.status).toBe(200);
@@ -149,31 +155,6 @@ describe(`GET ${API_PREFIX}/api-key`, () => {
         expect(body.data[0].revokedAt).not.toBeNull();
       }
     }
-  });
-
-  it("returns 401 without Authorization header", async () => {
-    const res = await app.request(`${API_PREFIX}/api-key`, {
-      method: "GET",
-    });
-    expect(res.status).toBe(401);
-    const respBody: unknown = await res.json();
-    const response = errorRespSchema.parse(respBody);
-    expect(response.success).toBe(false);
-    expect(response.message).toBe(AuthError.missingBearerHeader().message);
-    expect(response.error).toBe(AuthError.missingBearerHeader().code);
-  });
-
-  it("returns 401 with invalid token", async () => {
-    const res = await app.request(`${API_PREFIX}/api-key`, {
-      method: "GET",
-      headers: { Authorization: `Bearer invalid-token-value` },
-    });
-    expect(res.status).toBe(401);
-    const respBody: unknown = await res.json();
-    const response = errorRespSchema.parse(respBody);
-    expect(response.success).toBe(false);
-    expect(response.message).toBe(AuthError.failedVerifyingJwt().message);
-    expect(response.error).toBe(AuthError.failedVerifyingJwt().code);
   });
 
   it("returns 400 for a non-positive page", async () => {

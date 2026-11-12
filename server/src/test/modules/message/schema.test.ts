@@ -43,6 +43,7 @@ function insertMessage(
     .returning();
 }
 
+// Runtime ingestion is not implemented, so source-identity constraints require direct persistence coverage.
 describe("external source identity", () => {
   it("allows the same message ID in different chats or platforms", async () => {
     await insertMessage("telegram", "chat-a");

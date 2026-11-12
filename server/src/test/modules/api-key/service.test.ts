@@ -28,44 +28,8 @@ beforeEach(async () => {
   userId = user.id;
 });
 
-function consume(token: string) {
-  return ctx.db.transaction((tx) => ctx.services.apiKey.consumeApiKey(token, tx));
-}
-
-describe("ApiKeyService.consumeApiKey", () => {
-  it("consumes a valid key once and returns its owner", async () => {
-    const { id, key } = await issueKey();
-    await expect(consume(key)).resolves.toEqual({ userId });
-    const [row] = await ctx.db.select().from(apiKeys).where(eq(apiKeys.id, id));
-    expect(row.lastUsedAt).not.toBeNull();
-    await expect(consume(key)).rejects.toMatchObject({ code: ApiKeyError.keyInvalid().code });
-  });
-
-  it("rejects an unknown token", async () => {
-    await expect(consume("ek_unknown")).rejects.toMatchObject({
-      code: ApiKeyError.keyInvalid().code,
-    });
-  });
-
-  it("rejects a revoked key without consuming it", async () => {
-    const { id, key } = await issueKey();
-    await ctx.services.apiKey.revokeApiKey(userId, id);
-    await expect(consume(key)).rejects.toMatchObject({ code: ApiKeyError.keyInvalid().code });
-    const [row] = await ctx.db.select().from(apiKeys).where(eq(apiKeys.id, id));
-    expect(row.lastUsedAt).toBeNull();
-  });
-
-  it("rejects an expired key without consuming it", async () => {
-    const { id, key } = await issueKey();
-    await ctx.db
-      .update(apiKeys)
-      .set({ expiresAt: sql`clock_timestamp() - interval '1 minute'` })
-      .where(eq(apiKeys.id, id));
-    await expect(consume(key)).rejects.toMatchObject({ code: ApiKeyError.keyInvalid().code });
-    const [row] = await ctx.db.select().from(apiKeys).where(eq(apiKeys.id, id));
-    expect(row.lastUsedAt).toBeNull();
-  });
-
+// Transaction-local timeouts bound a deliberately blocked operation; the bot cannot configure that transaction.
+describe("key expiry while waiting for a lock", () => {
   it("rejects a key that expires while consumption waits on an unchanged row lock", async () => {
     const context = ctx;
     const { id, key: token } = await issueKey();

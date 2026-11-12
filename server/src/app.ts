@@ -21,7 +21,6 @@ import type { EnvSchema } from "@/pkg/env";
 import { initHttp } from "@/pkg/http";
 import type { Llm } from "@/pkg/llm";
 import type { Logger } from "@/pkg/logger";
-import { initScheduledJob } from "@/pkg/scheduler";
 import { initRateLimiters } from "@/shared/rate-limit";
 import type { RateLimitOverrides } from "@/shared/rate-limit";
 
@@ -75,14 +74,6 @@ export function initApp({ env, db, logger, rateLimitOverrides }: InitAppParams) 
 
   return {
     app,
-    jobs: {
-      sessionCleanup: initScheduledJob({
-        name: "session-cleanup",
-        intervalMs: 24 * 60 * 60 * 1000,
-        run: () => sessionService.cleanupExpiredSessions(),
-        logger,
-      }),
-    },
     services: {
       auth: authService,
       session: sessionService,

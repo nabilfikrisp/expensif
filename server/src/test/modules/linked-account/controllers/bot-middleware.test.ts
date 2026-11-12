@@ -1,15 +1,21 @@
-import { MockLanguageModelV4 } from "ai/test";
 import { Api, BotError, Context } from "grammy";
 import type { Message, Update, User } from "grammy/types";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { initTest } from "../../../helper";
+import {
+  initTest,
+  initTestBot,
+  registerAndGetToken,
+  createApiKey,
+  botCommand,
+} from "../../../helper";
 
-import { initBotApp } from "@/app";
 import * as expenseParser from "@/modules/expense/parser";
 import { initRequireLinkedAccountMiddleware } from "@/modules/linked-account/controllers/bot-middleware";
+import { listLinkedAccountsRespSchema } from "@/modules/linked-account/controllers/http/list";
 import { users } from "@/modules/user/schema";
 import { initDb } from "@/pkg/db";
+import { API_PREFIX } from "@/pkg/http";
 import { initLogger } from "@/pkg/logger";
 
 let ctx: Awaited<ReturnType<typeof initTest>>;
@@ -39,28 +45,7 @@ function command(text: string): Update {
 function createBot(db = ctx.db) {
   const logger = initLogger(ctx.env);
   const logError = vi.spyOn(logger, "error");
-  const bot = initBotApp({
-    env: ctx.env,
-    db,
-    logger,
-    llm: { model: new MockLanguageModelV4() },
-    linkedAccountUseCase: ctx.useCases.linkedAccount,
-  });
-  bot.botInfo = {
-    id: 999,
-    is_bot: true,
-    first_name: "Bot",
-    username: "test_bot",
-    can_join_groups: true,
-    can_read_all_group_messages: false,
-    supports_inline_queries: false,
-    can_connect_to_business: false,
-    has_main_web_app: false,
-    has_topics_enabled: false,
-    allows_users_to_create_topics: false,
-    can_manage_bots: false,
-    supports_join_request_queries: false,
-  };
+  const bot = initTestBot(ctx, db, logger);
   return { bot, logError };
 }
 
@@ -107,13 +92,22 @@ describe("linked-account bot middleware", () => {
   );
 
   it("preserves parsing for linked senders and blocks the next command after unlinking", async () => {
-    const account = await ctx.services.linkedAccount.linkAccount({
-      userId,
-      platform: "telegram",
-      platformUserId: sender.id.toString(),
-      platformUsername: "old_username",
+    const tokens = await registerAndGetToken(ctx.app, {
+      email: "flow@example.com",
+      password: "pass1234",
+      name: "Flow",
     });
+    const { key } = await createApiKey(ctx.app, tokens.accessToken);
     const { bot } = createBot();
+    await bot.handleUpdate(botCommand(`/link ${key}`));
+    const listed = await ctx.app.request(`${API_PREFIX}/linked-account`, {
+      headers: { Authorization: `Bearer ${tokens.accessToken}` },
+    });
+    expect(listed.status).toBe(200);
+    const {
+      data: [account],
+    } = listLinkedAccountsRespSchema.parse(await listed.json());
+    reply.mockClear();
     await bot.handleUpdate(command("/expense bakso 15k"));
     expect(expenseParser.execParseExpense).toHaveBeenCalledOnce();
     expect(editMessageText).toHaveBeenCalledWith(
@@ -122,7 +116,11 @@ describe("linked-account bot middleware", () => {
       expect.stringContaining("Item: bakso")
     );
 
-    await ctx.services.linkedAccount.unlinkAccount(userId, account.id);
+    const unlinked = await ctx.app.request(`${API_PREFIX}/linked-account/${account.id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${tokens.accessToken}` },
+    });
+    expect(unlinked.status).toBe(200);
     reply.mockClear();
     await bot.handleUpdate(command("/expense bakso 15k"));
     expect(reply).toHaveBeenCalledExactlyOnceWith(
@@ -199,6 +197,7 @@ describe("linked-account bot middleware", () => {
     }
   });
 
+  // Direct middleware invocation is needed to distinguish downstream errors from lookup errors by identity.
   it("does not translate downstream errors as missing links", async () => {
     await ctx.services.linkedAccount.linkAccount({
       userId,

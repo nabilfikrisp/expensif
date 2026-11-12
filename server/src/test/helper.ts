@@ -1,10 +1,15 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
+
+import { MockLanguageModelV4 } from "ai/test";
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
+import type { Update } from "grammy/types";
 import { Pool } from "pg";
+import { expect, it } from "vitest";
 
-import { initApp } from "@/app";
+import { initApp, initBotApp } from "@/app";
 import { generateApiKeyRespSchema } from "@/modules/api-key/controllers/http/generate";
+import { AuthError } from "@/modules/auth/error";
 import { listLinkedAccountsRespSchema } from "@/modules/linked-account/controllers/http/list";
 import { initDb } from "@/pkg/db";
 import type { DbClient } from "@/pkg/db";
@@ -20,6 +25,7 @@ import {
 } from "@/pkg/db/schema";
 import type { EnvSchema } from "@/pkg/env";
 import { API_PREFIX } from "@/pkg/http";
+import type { Logger } from "@/pkg/logger";
 import { initLogger } from "@/pkg/logger";
 
 export const mockUser = { email: "test@example.com", password: "pass1234", name: "Test User" };
@@ -240,4 +246,103 @@ export async function withSessionWritesBlocked(
   } finally {
     await client.end();
   }
+}
+
+export async function loginAndGetTokens(app: OpenAPIHono, email: string, password: string) {
+  const response = await app.request(`${API_PREFIX}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  if (response.status !== 200) {
+    throw new Error(`Login failed: ${response.status}`);
+  }
+  const body = (await response.json()) as { data: { accessToken: string } };
+  return { accessToken: body.data.accessToken, ...sessionCookies(response) };
+}
+
+export function initTestBot(
+  ctx: Awaited<ReturnType<typeof initTest>>,
+  db = ctx.db,
+  logger: Logger = initLogger(ctx.env)
+) {
+  const bot = initBotApp({
+    env: ctx.env,
+    db,
+    logger,
+    llm: { model: new MockLanguageModelV4() },
+    linkedAccountUseCase: ctx.useCases.linkedAccount,
+  });
+  bot.botInfo = {
+    id: 999,
+    is_bot: true,
+    first_name: "Bot",
+    username: "test_bot",
+    can_join_groups: true,
+    can_read_all_group_messages: false,
+    supports_inline_queries: false,
+    can_connect_to_business: false,
+    has_main_web_app: false,
+    has_topics_enabled: false,
+    allows_users_to_create_topics: false,
+    can_manage_bots: false,
+    supports_join_request_queries: false,
+  };
+  return bot;
+}
+
+export function botCommand(
+  text: string,
+  id = 123,
+  chatType: "private" | "group" = "private",
+  username?: string
+): Update {
+  const chat =
+    chatType === "private"
+      ? { id, type: "private" as const, first_name: "Test" }
+      : { id: -100, type: "group" as const, title: "Test" };
+  return {
+    update_id: id,
+    message: {
+      message_id: id,
+      date: 0,
+      chat,
+      from: { id, is_bot: false, first_name: "Test", username },
+      text,
+      entities: [{ type: "bot_command", offset: 0, length: text.split(" ")[0].length }],
+    },
+  };
+}
+
+export function testBearerAuthentication(getApp: () => OpenAPIHono, method: string, path: string) {
+  it.each([
+    [undefined, AuthError.missingBearerHeader()],
+    ["Bearer invalid-token-value", AuthError.failedVerifyingJwt()],
+  ] as const)("rejects unauthorized access (%s)", async (authorization, error) => {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (authorization) {
+      headers.Authorization = authorization;
+    }
+    const response = await getApp().request(`${API_PREFIX}${path}`, {
+      method,
+      headers,
+      ...(method === "POST" ? { body: "{}" } : {}),
+    });
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({
+      success: false,
+      error: error.code,
+      message: error.message,
+    });
+  });
+}
+
+export function refreshSession(
+  app: OpenAPIHono,
+  tokens: { refreshToken: string; csrfToken: string }
+) {
+  return app.request(`${API_PREFIX}/auth/refresh`, {
+    method: "POST",
+    headers: sessionHeaders(tokens),
+  });
 }

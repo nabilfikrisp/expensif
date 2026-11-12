@@ -34,6 +34,7 @@ function insertExpense(amount: string, currency?: string) {
     .returning();
 }
 
+// Runtime ingestion is not implemented, so no application flow can exercise these persistence constraints.
 describe("expense database policy", () => {
   it.each(["1", "9007199254740993", "999999999999999999999999999999"])(
     "stores %s as an exact whole-rupiah value with default IDR",

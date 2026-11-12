@@ -5,16 +5,23 @@ import { initEnv } from "@/pkg/env";
 import { startHttp } from "@/pkg/http";
 import { initLlm } from "@/pkg/llm";
 import { initLogger } from "@/pkg/logger";
+import { initScheduledJob } from "@/pkg/scheduler";
 import { shutdown } from "@/shutdown";
 
 const env = initEnv();
 const { db, client } = initDb(env.DATABASE_URL);
 const logger = initLogger(env);
 const llm = initLlm(env.OPENROUTER_API_KEY, env.OPENROUTER_MODEL);
-const { app, useCases, jobs } = initApp({ env, db, logger });
+const { app, useCases, services } = initApp({ env, db, logger });
 const bot = initBotApp({ env, db, logger, llm, linkedAccountUseCase: useCases.linkedAccount });
+const sessionCleanup = initScheduledJob({
+  name: "session-cleanup",
+  intervalMs: 24 * 60 * 60 * 1000,
+  run: () => services.session.cleanupExpiredSessions(),
+  logger,
+});
 
-await jobs.sessionCleanup.start();
+await sessionCleanup.start();
 const httpServer = startHttp(app, logger, env.PORT);
 startBot(bot, logger);
 
@@ -26,7 +33,7 @@ process.on(
       bot,
       httpServer,
       dbClient: client,
-      stopJobs: () => jobs.sessionCleanup.stop(),
+      stopJobs: () => sessionCleanup.stop(),
     })
 );
 process.on(
@@ -37,6 +44,6 @@ process.on(
       bot,
       httpServer,
       dbClient: client,
-      stopJobs: () => jobs.sessionCleanup.stop(),
+      stopJobs: () => sessionCleanup.stop(),
     })
 );

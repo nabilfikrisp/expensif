@@ -12,7 +12,7 @@ import {
 import { sessions } from "@/pkg/db/schema";
 
 import { API_PREFIX } from "@/pkg/http";
-import { errorRespSchema, tokenRespSchema, successRespSchema } from "@/shared/response.schema";
+import { errorRespSchema, tokenRespSchema } from "@/shared/response.schema";
 
 let ctx: Awaited<ReturnType<typeof initTest>>;
 let app: OpenAPIHono;
@@ -108,7 +108,29 @@ describe(`POST ${API_PREFIX}/auth/logout`, () => {
 
   it("allows repeated logout, missing cookies, and unknown tokens", async () => {
     const original = await registerAndGetToken(app, mockUser);
-    expect((await post("logout", original)).status).toBe(200);
+    const login = () =>
+      app.request(`${API_PREFIX}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: mockUser.email, password: mockUser.password }),
+      });
+    const otherLogin = await login();
+    expect(otherLogin.status).toBe(200);
+    const other = sessionCookies(otherLogin);
+    const logout = await post("logout", original);
+    expect(logout.status).toBe(200);
+    expect(await logout.json()).toMatchObject({ success: true });
+    expect(logout.headers.getSetCookie()).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/^refresh_token=.*Max-Age=0/),
+        expect.stringMatching(/^csrf_token=.*Max-Age=0/),
+      ])
+    );
+    expect((await post("refresh", original)).status).toBe(401);
+    expect((await post("refresh", other)).status).toBe(200);
+    const fresh = await login();
+    expect(fresh.status).toBe(200);
+    expect((await post("refresh", sessionCookies(fresh))).status).toBe(200);
     expect((await post("logout", original)).status).toBe(200);
     expect((await post("logout", { ...original, refreshToken: "unknown" })).status).toBe(200);
     expect((await app.request(`${API_PREFIX}/auth/logout`, { method: "POST" })).status).toBe(200);
@@ -136,60 +158,4 @@ describe(`POST ${API_PREFIX}/auth/logout`, () => {
       expect((await post("refresh", original)).status).toBe(200);
     }
   );
-  it("clears refresh_token and csrf_token cookie", async () => {
-    const { refreshToken, csrfToken } = await registerAndGetToken(app, mockUser);
-
-    const res = await app.request(`${API_PREFIX}/auth/logout`, {
-      method: "POST",
-      headers: {
-        Cookie: `refresh_token=${refreshToken}; csrf_token=${csrfToken}`,
-        "X-CSRF-Token": csrfToken,
-      },
-    });
-
-    expect(res.status).toBe(200);
-    const respBody: unknown = await res.json();
-    const parseResult = successRespSchema.parse(respBody);
-
-    expect(parseResult.success).toBe(true);
-
-    const setCookies = res.headers.getSetCookie();
-    const clearedRefreshCookie = setCookies.find((c) => c.startsWith("refresh_token="));
-    expect(clearedRefreshCookie).toBeDefined();
-    expect(clearedRefreshCookie).toContain("Max-Age=0");
-
-    const clearedCsrfCookie = setCookies.find((c) => c.startsWith("csrf_token="));
-    expect(clearedCsrfCookie).toBeDefined();
-    expect(clearedCsrfCookie).toContain("Max-Age=0");
-  });
-  it("rejects missing CSRF proof and leaves the session usable", async () => {
-    const { refreshToken, csrfToken } = await registerAndGetToken(app, mockUser);
-    const res = await app.request(`${API_PREFIX}/auth/logout`, {
-      method: "POST",
-      headers: { Cookie: `refresh_token=${refreshToken}` },
-    });
-    expect(res.status).toBe(403);
-    const refresh = await app.request(`${API_PREFIX}/auth/refresh`, {
-      method: "POST",
-      headers: {
-        Cookie: `refresh_token=${refreshToken}; csrf_token=${csrfToken}`,
-        "X-CSRF-Token": csrfToken,
-      },
-    });
-    expect(refresh.status).toBe(200);
-  });
-
-  it("revokes the session before reporting logout success", async () => {
-    const { refreshToken, csrfToken } = await registerAndGetToken(app, mockUser);
-    const headers = {
-      Cookie: `refresh_token=${refreshToken}; csrf_token=${csrfToken}`,
-      "X-CSRF-Token": csrfToken,
-    };
-    expect(
-      (await app.request(`${API_PREFIX}/auth/logout`, { method: "POST", headers })).status
-    ).toBe(200);
-    expect(
-      (await app.request(`${API_PREFIX}/auth/refresh`, { method: "POST", headers })).status
-    ).toBe(401);
-  });
 });

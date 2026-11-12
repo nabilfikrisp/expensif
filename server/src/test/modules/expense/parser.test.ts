@@ -24,6 +24,7 @@ function modelFor(amount: unknown, currency = "IDR", date = "2026-11-07") {
 
 afterEach(() => vi.useRealTimers());
 
+// Controlled model output and prompt inspection isolate validation and date boundaries without live LLM calls.
 describe("expense parsing", () => {
   it.each(["15000", "9007199254740993"])(
     "preserves normalized amount %s exactly",

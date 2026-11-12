@@ -1,4 +1,5 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
+import { decodeJwt } from "jose";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { initTest, registerAndGetToken, mockUser } from "../../../../helper";
@@ -7,11 +8,12 @@ import { AuthError } from "@/modules/auth/error";
 import { API_PREFIX } from "@/pkg/http";
 import { errorRespSchema, tokenRespSchema } from "@/shared/response.schema";
 
+let ctx: Awaited<ReturnType<typeof initTest>>;
 let app: OpenAPIHono;
 let resetDb: () => Promise<void>;
 
 beforeAll(async () => {
-  const ctx = await initTest();
+  ctx = await initTest();
   app = ctx.app;
   resetDb = ctx.resetDb;
   return () => ctx.client.end();
@@ -34,7 +36,17 @@ describe(`POST ${API_PREFIX}/auth/login`, () => {
     expect(res.status).toBe(200);
     const respBody: unknown = await res.json();
     const response = tokenRespSchema.parse(respBody);
-    expect(response.data.accessToken).toBeTypeOf("string");
+    const payload = decodeJwt(response.data.accessToken);
+    if (payload.exp === undefined || payload.iat === undefined) {
+      throw new Error("Missing access token timestamps");
+    }
+    expect(payload.exp - payload.iat).toBe(15 * 60);
+    const me = await app.request(`${API_PREFIX}/auth/me`, {
+      headers: { Authorization: `Bearer ${response.data.accessToken}` },
+    });
+    expect(me.status).toBe(200);
+    const profile = (await me.json()) as { data: { user: { id: string } } };
+    expect(payload.sub).toBe(profile.data.user.id);
 
     const cookies = res.headers.getSetCookie();
     const refreshCookie = cookies.find((c) => c.startsWith("refresh_token="));

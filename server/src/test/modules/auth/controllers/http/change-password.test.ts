@@ -1,6 +1,13 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { initTest, mockUser, registerAndGetToken } from "../../../../helper";
+import {
+  loginAndGetTokens,
+  initTest,
+  mockUser,
+  registerAndGetToken,
+  refreshSession,
+  sessionCookies,
+} from "../../../../helper";
 
 import { API_PREFIX } from "@/pkg/http";
 
@@ -26,14 +33,37 @@ async function setup() {
 }
 
 describe("POST /auth/change-password", () => {
+  it("does not let a racing old-password login escape revocation", async () => {
+    const current = await setup();
+    const [login, change] = await Promise.all([
+      ctx.app.request(`${API_PREFIX}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: mockUser.email, password: mockUser.password }),
+      }),
+      ctx.app.request(`${API_PREFIX}/auth/change-password`, {
+        method: "POST",
+        headers: current.headers,
+        body: JSON.stringify({ currentPassword: mockUser.password, newPassword }),
+      }),
+    ]);
+    expect(change.status).toBe(200);
+    if (login.status === 200) {
+      expect((await refreshSession(ctx.app, sessionCookies(login))).status).toBe(401);
+    } else {
+      expect(login.status).toBe(401);
+      expect(await login.json()).toMatchObject({ error: "INVALID_CREDENTIALS" });
+    }
+    expect((await refreshSession(ctx.app, current)).status).toBe(401);
+  });
   it("revokes every owned session, clears cookies, and requires the new password", async () => {
     const current = await setup();
-    const other = await ctx.useCases.auth.login(mockUser.email, mockUser.password);
-    const unrelated = await ctx.useCases.auth.register(
-      "other@example.com",
-      mockUser.password,
-      "Other"
-    );
+    const other = await loginAndGetTokens(ctx.app, mockUser.email, mockUser.password);
+    const unrelated = await registerAndGetToken(ctx.app, {
+      ...mockUser,
+      email: "other@example.com",
+      name: "Other",
+    });
     const response = await ctx.app.request(`${API_PREFIX}/auth/change-password`, {
       method: "POST",
       headers: current.headers,
@@ -46,20 +76,17 @@ describe("POST /auth/change-password", () => {
         expect.stringMatching(/^csrf_token=.*Max-Age=0/),
       ])
     );
-    for (const token of [current.refreshToken, other.refreshToken]) {
-      await expect(ctx.useCases.auth.refreshSession(token)).rejects.toMatchObject({
-        code: "INVALID_TOKEN",
-      });
+    for (const tokens of [current, other]) {
+      expect((await refreshSession(ctx.app, tokens)).status).toBe(401);
     }
-    await expect(ctx.useCases.auth.login(mockUser.email, mockUser.password)).rejects.toMatchObject({
-      code: "INVALID_CREDENTIALS",
+    const oldLogin = await ctx.app.request(`${API_PREFIX}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: mockUser.email, password: mockUser.password }),
     });
-    expect((await ctx.useCases.auth.login(mockUser.email, newPassword)).accessToken).toBeTypeOf(
-      "string"
-    );
-    expect((await ctx.useCases.auth.refreshSession(unrelated.refreshToken)).accessToken).toBeTypeOf(
-      "string"
-    );
+    expect(oldLogin.status).toBe(401);
+    await loginAndGetTokens(ctx.app, mockUser.email, newPassword);
+    expect((await refreshSession(ctx.app, unrelated)).status).toBe(200);
   });
 
   it.each([
@@ -98,15 +125,7 @@ describe("POST /auth/change-password", () => {
     });
     expect(response.status).toBe(status);
     expect(response.headers.getSetCookie()).toEqual([]);
-    expect(
-      (
-        await ctx.db.transaction((tx) =>
-          ctx.services.auth.login(mockUser.email, mockUser.password, tx)
-        )
-      ).userId
-    ).toBeTypeOf("string");
-    expect((await ctx.useCases.auth.refreshSession(current.refreshToken)).accessToken).toBeTypeOf(
-      "string"
-    );
+    await loginAndGetTokens(ctx.app, mockUser.email, mockUser.password);
+    expect((await refreshSession(ctx.app, current)).status).toBe(200);
   });
 });

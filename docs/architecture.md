@@ -1,6 +1,6 @@
 ---
 status: active
-updated: 2026-11-06
+updated: 2026-11-12
 ---
 
 # Architecture
@@ -9,25 +9,29 @@ This document defines the layering rules and holds maintainer rationale for them
 
 ## Mandatory rules
 
-These rules apply now. Future improvements require a maintainer decision; they are not implementation shortcuts.
+Changes to these rules require a maintainer decision.
 
-1. Assemble dependencies through `init*` factories in the [application assembly](../server/src/app.ts) and [startup entry point](../server/src/index.ts). Pass service and database instances as dependencies; do not import instances directly from other files. Type imports and factory imports are allowed.
-2. Controllers own transport: validation, authentication middleware, and responses. Services own operations.
-3. A use case owns a transaction spanning several services. The current example is [linked-account/use-case.ts](../server/src/modules/linked-account/use-case.ts).
+1. Assemble dependencies through `init*` factories in [app.ts](../server/src/app.ts) and [index.ts](../server/src/index.ts). Inject service and database instances; never import them directly. Type and factory imports are allowed.
+2. Controllers own request/response contracts, transport validation, coercion, defaults, API metadata, authentication middleware, and responses. Services own operations.
+3. Use cases own transactions spanning several services; see [linked-account/use-case.ts](../server/src/modules/linked-account/use-case.ts).
 4. Domain errors carry machine-readable codes and are mapped at the route boundary. Unknown errors propagate; see the [API-key route boundary](../server/src/modules/api-key/controllers/http/index.ts).
-5. New modules follow the [API-key reference module](../server/src/modules/api-key/): service, domain errors, database schema, validation schema, and transport controllers. Follow the applicable parts; do not create unused files.
-6. Follow the [fail-loudly rules](../AGENTS.md#fail-loudly). Component startup failures, including bot startup failures, must fail the process.
+5. Follow the applicable parts of the [API-key reference module](../server/src/modules/api-key/) for new modules; do not create unused files.
+6. Follow the [fail-loudly rules](../AGENTS.md#fail-loudly). Any component startup failure, including the bot, must fail the process.
 7. A controller calls either services or use cases, never both. Once it uses use cases, it continues using use cases.
 
-8. Each layer owns its DTOs: input and output data shapes. Controllers own transport schemas, validation, coercion, defaults, and API metadata. Services and use cases define their input and output types independently. Similar shapes may be duplicated across layers; a shared source of truth is not required. Typechecking verifies compatibility at call boundaries; tests verify behavior. Behavioral interfaces between layers remain a future possibility.
+8. Each layer defines its own input and output DTOs. Similar shapes may be duplicated; shared definitions are not required. Typechecking verifies call compatibility; tests verify behavior. Behavioral interfaces remain a future possibility.
 
-9. User-owned HTTP resources use the authenticated token's user ID, never a request-supplied owner ID. Services scope reads and mutations to that owner; mutations by resource ID filter by both resource ID and owner ID. Keep cross-user regression coverage when adding or changing these endpoints.
+9. User-owned HTTP resources use the authenticated token's user ID, never a request-supplied owner ID. Services scope reads and mutations to that owner; mutations by ID filter by both resource and owner IDs. Keep cross-user regression coverage for these endpoints.
 
-10. Tests mirror source folders under `server/src/test/`: module HTTP tests live in `modules/<module>/controllers/http/`, service and use-case tests beside those folders as `service.test.ts` and `use-case.test.ts`, and infrastructure tests under the matching `pkg/` path. HTTP test files follow endpoint operations; shared setup stays in `test/helper.ts`.
+10. Tests mirror source paths under `server/src/test/`, including module controllers, `service.test.ts`, `use-case.test.ts`, and infrastructure under `pkg/`. HTTP files follow endpoint operations; shared setup stays in `test/helper.ts`.
 
-11. Test database setup and assertions use Drizzle queries and imported schema references for application tables and columns. Raw SQL remains appropriate for PostgreSQL-specific operations; interpolate schema objects when those operations reference application tables or columns. Typechecking checks schema references; integration tests against committed migrations check the database matches them.
+11. Test database setup and assertions use Drizzle queries and imported schema references. Use raw SQL for PostgreSQL-specific operations, interpolating schema objects for application tables and columns. Integration tests run against committed migrations to verify schema compatibility.
 
-12. Keep routine tests deterministic and free of paid LLM calls. Use mocks to test application validation, not to claim parsing accuracy. Evaluate parsing with the real application LLM in a manually run `.check.ts` file outside `test:run`, using `OPENROUTER_MODEL` and credentials from the application environment, without a fallback model. Test database-error mapping through real PostgreSQL failures and the application's handling of them.
+12. Keep routine tests deterministic and free of paid LLM calls. Mocks test application validation, not parsing accuracy. Evaluate parsing manually in `.check.ts` files outside `test:run`, using the application's real LLM, `OPENROUTER_MODEL`, and credentials, without a fallback model. Test database-error mapping through real PostgreSQL failures.
+
+13. Test distinct application behaviors, including successful flows, failures, and important edge cases, through the highest practical entry point, using real application layers and PostgreSQL. Assert observable responses and persisted state. Avoid redundant coverage across layers and coupling tests to internal functions. Keep focused lower-level tests only where broader flows cannot adequately verify the behavior. Each retained lower-level test or group must include a brief comment explaining why broader flows cannot adequately verify the behavior.
+
+    Reason: Catch behavioral regressions while keeping the test suite small and maintainable. Internal refactoring should not require test changes when observable behavior stays the same.
 
 ## Known exceptions
 

@@ -14,6 +14,7 @@ beforeAll(async () => {
 });
 beforeEach(async () => ctx.resetDb());
 
+// Cleanup has no request entry point; call the operation directly without waiting for the daily scheduler.
 describe("SessionService.cleanupExpiredSessions", () => {
   it("deletes idle and absolute expired sessions while preserving unexpired rows", async () => {
     const active = await ctx.useCases.auth.register(
@@ -34,12 +35,6 @@ describe("SessionService.cleanupExpiredSessions", () => {
       .set({ absoluteExpiresAt: sql`clock_timestamp() - interval '1 second'` })
       .where(eq(sessions.tokenHash, tokenHash(absolute.refreshToken)));
 
-    // Expiry rejects authentication before any cleanup has run.
-    for (const token of [idle.refreshToken, absolute.refreshToken]) {
-      await expect(ctx.useCases.auth.refreshSession(token)).rejects.toMatchObject({
-        code: "INVALID_TOKEN",
-      });
-    }
     expect(await ctx.db.select().from(sessions)).toHaveLength(4);
     await ctx.services.session.cleanupExpiredSessions();
     const remaining = await ctx.db.select().from(sessions);

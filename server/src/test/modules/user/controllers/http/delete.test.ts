@@ -1,11 +1,18 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
+import { eq } from "drizzle-orm";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { createLinkedUser, initTest, registerAndGetToken } from "../../../../helper";
+import {
+  createLinkedUser,
+  initTest,
+  registerAndGetToken,
+  sessionHeaders,
+} from "../../../../helper";
 
 import { meRespSchema } from "@/modules/auth/controllers/http/me";
 import { listLinkedAccountsRespSchema } from "@/modules/linked-account/controllers/http/list";
 import { UserError } from "@/modules/user/error";
+import { sessions, users } from "@/pkg/db/schema";
 import { API_PREFIX } from "@/pkg/http";
 
 let app: OpenAPIHono;
@@ -53,6 +60,21 @@ describe(`DELETE ${API_PREFIX}/user/me`, () => {
 
     const ownerMe = await app.request(`${API_PREFIX}/auth/me`, { headers: ownerHeaders });
     expect(ownerMe.status).toBe(404);
+    expect(await ownerMe.json()).toMatchObject({ error: "USER_NOT_FOUND" });
+    const remainingUsers = await ctx.db.select().from(users);
+    expect(remainingUsers.map((row) => row.id)).toEqual([user.id]);
+    expect(await ctx.db.select().from(sessions).where(eq(sessions.userId, user.id))).toHaveLength(
+      1
+    );
+    expect(await ctx.db.select().from(sessions)).toHaveLength(1);
+    expect(
+      (
+        await app.request(`${API_PREFIX}/auth/refresh`, {
+          method: "POST",
+          headers: sessionHeaders(owner),
+        })
+      ).status
+    ).toBe(401);
     const surviving = await app.request(`${API_PREFIX}/auth/me`, { headers: otherHeaders });
     expect(surviving.status).toBe(200);
     expect(meRespSchema.parse(await surviving.json()).data.user.id).toBe(user.id);
