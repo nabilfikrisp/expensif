@@ -39,16 +39,17 @@ export function botCommand(
   text: string,
   id = 123,
   chatType: "private" | "group" = "private",
-  username?: string
+  username?: string,
+  messageId = id
 ): Update {
   const chat =
     chatType === "private"
       ? { id, type: "private" as const, first_name: "Test" }
       : { id: -100, type: "group" as const, title: "Test" };
   return {
-    update_id: id,
+    update_id: messageId,
     message: {
-      message_id: id,
+      message_id: messageId,
       date: 0,
       chat,
       from: { id, is_bot: false, first_name: "Test", username },

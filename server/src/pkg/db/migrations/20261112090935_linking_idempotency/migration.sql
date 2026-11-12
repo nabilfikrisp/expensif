@@ -1,0 +1,2 @@
+ALTER TABLE "linked_accounts" ADD COLUMN "idempotency_key" text;--> statement-breakpoint
+ALTER TABLE "linked_accounts" ADD CONSTRAINT "linked_accounts_idempotency_key_unique" UNIQUE("idempotency_key");

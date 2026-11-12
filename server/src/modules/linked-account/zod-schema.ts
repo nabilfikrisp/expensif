@@ -4,5 +4,5 @@ import { linkedAccounts } from "./schema";
 export const linkedAccountSelectSchema = createSelectSchema(linkedAccounts);
 
 export const linkedAccountRespSchema = linkedAccountSelectSchema
-  .omit({ userId: true })
+  .omit({ userId: true, idempotencyKey: true })
   .openapi("LinkedAccount");

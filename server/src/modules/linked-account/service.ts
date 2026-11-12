@@ -3,7 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { LinkedAccountError } from "@/modules/linked-account/error";
 import { linkedAccounts } from "@/modules/linked-account/schema";
 import { users } from "@/modules/user/schema";
-import type { Db, DbTx } from "@/pkg/db";
+import type { Db, DbTx, Tx } from "@/pkg/db";
 import { isUniqueConstraintError } from "@/pkg/db/error";
 
 export interface LinkAccount {
@@ -11,6 +11,7 @@ export interface LinkAccount {
   platform: string;
   platformUserId: string;
   platformUsername?: string;
+  idempotencyKey?: string;
   tx?: DbTx;
 }
 
@@ -28,6 +29,7 @@ export function initLinkedAccountService(db: Db) {
             platform: params.platform,
             platformUserId: params.platformUserId,
             platformUsername: params.platformUsername ?? null,
+            idempotencyKey: params.idempotencyKey ?? null,
           })
           .returning();
 
@@ -38,6 +40,22 @@ export function initLinkedAccountService(db: Db) {
         }
         throw err;
       }
+    },
+
+    async findLinkedAccountForRetry(idempotencyKey: string, tx: Tx) {
+      // Keep a completed link from being unlinked until its retry transaction finishes.
+      return (
+        await tx
+          .select({
+            userId: linkedAccounts.userId,
+            platform: linkedAccounts.platform,
+            platformUserId: linkedAccounts.platformUserId,
+          })
+          .from(linkedAccounts)
+          .where(eq(linkedAccounts.idempotencyKey, idempotencyKey))
+          .limit(1)
+          .for("share")
+      ).at(0);
     },
 
     async getLinkedAccount(platform: string, platformUserId: string) {

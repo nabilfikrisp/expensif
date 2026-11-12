@@ -1,0 +1,81 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "21274513-c535-4731-ac6e-472ab139f403",
+  "prevIds": [
+    "3d45f68d-5f35-4c1f-b809-0f1cd91452ab"
+  ],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "linked_accounts",
+        "idempotency_key"
+      ],
+      "writes": [
+        "s|col|public.linked_accounts.idempotency_key",
+        "n|col|public.linked_accounts.idempotency_key",
+        "e|col|public.linked_accounts.idempotency_key"
+      ],
+      "reads": [
+        "n|tbl|public.linked_accounts",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "add_unique",
+      "statementTarget": [
+        "table",
+        "public",
+        "linked_accounts"
+      ],
+      "writes": [
+        "s|uq|public.linked_accounts.linked_accounts_idempotency_key_unique",
+        "n|uq|public.linked_accounts.linked_accounts_idempotency_key_unique",
+        "e|uq|public.linked_accounts.linked_accounts_idempotency_key_unique",
+        "n|con|public.linked_accounts.linked_accounts_idempotency_key_unique",
+        "n|rel|public.linked_accounts_idempotency_key_unique"
+      ],
+      "reads": [
+        "n|tbl|public.linked_accounts",
+        "n|sch|public",
+        "n|col|public.linked_accounts.idempotency_key"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "linked_accounts",
+        "name": "idempotency_key",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "linked_accounts",
+        "name": "linked_accounts_idempotency_key_unique",
+        "nameExplicit": true,
+        "columns": [
+          "idempotency_key"
+        ],
+        "nullsNotDistinct": false,
+        "entityType": "uniques"
+      }
+    }
+  ]
+}

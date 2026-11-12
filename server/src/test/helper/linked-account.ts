@@ -17,6 +17,7 @@ export async function createLinkedUser(context: TestContext, name: string) {
     token: key,
     platform: "telegram",
     platformUserId: name,
+    idempotencyKey: `test:link:${name}`,
   });
   const res = await context.app.request(`${API_PREFIX}/linked-account`, { headers });
   if (res.status !== 200) {

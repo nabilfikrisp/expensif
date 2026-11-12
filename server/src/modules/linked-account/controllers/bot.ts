@@ -54,6 +54,7 @@ export function registerLinkCommand({
         platformUserId,
         platformUsername: from.username,
         platform: PLATFORM_NAME,
+        idempotencyKey: `${PLATFORM_NAME}:link:${ctx.chat.id}:${ctx.msg.message_id}`,
       }));
     } catch (err) {
       if (err instanceof LinkedAccountError) {

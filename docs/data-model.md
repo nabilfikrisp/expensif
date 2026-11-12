@@ -21,7 +21,7 @@ Short-lived, single-use account-linking credentials, distinct from API access to
 
 ## linked_accounts
 
-An external account is identified by platform and platform user ID; usernames are display information. Unlinking preserves historical messages and their external source identity.
+An external account is identified by platform and platform user ID; usernames are display information. Repeated delivery of a successful linking command returns the existing link for that platform account, even after its key expires or is revoked. New commands still require an unused key. Unlinking removes the command's replay result and preserves historical messages and their external source identity.
 
 ## categories
 

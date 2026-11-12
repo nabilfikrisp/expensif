@@ -11,6 +11,7 @@ const platformArgs = {
   platform: "telegram",
   platformUserId: "tg-123",
   platformUsername: "tester",
+  idempotencyKey: "test:link:123",
 };
 
 async function issueKey() {
