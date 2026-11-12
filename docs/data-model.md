@@ -29,13 +29,13 @@ Categories are global. The fallback follows the [product decision](product-inten
 
 ## messages
 
-Preserve the original message text. One message may produce multiple expenses. External source identity consists of platform, chat, and message ID, independently of the linked-account reference. Duplicate deliveries must not create additional expenses. Deleting a message preserves its expenses.
+Preserve the original message text. Initial ingestion saves one expense per message; multiple expenses remain future scope. Platform controllers supply an opaque idempotency key independently of source metadata and the linked-account reference. Duplicate deliveries must not create additional expenses, including after unlinking or relinking. Deleting a message preserves its expenses.
 
-Allowed parsing states remain undefined.
+Initial ingestion retains only successfully parsed messages; failed parsing leaves nothing saved. Allowed parsing-state values remain undefined.
 
 ## expenses
 
-Each expense belongs to a user and may reference a source message and category. Application validation and database constraints must enforce positive, finite, whole-rupiah amounts; reject fractional input without rounding. Currency and display conventions follow the [currency policy](product-intent.md#why-a-particular-currency-policy).
+Each expense belongs to a user and may reference a source message and category. Several items sharing one combined total count as one expense, with a combined item description; do not invent individual prices or split the total. Application validation and database constraints must enforce positive, finite, whole-rupiah amounts; reject fractional input without rounding. Currency and display conventions follow the [currency policy](product-intent.md#why-a-particular-currency-policy).
 
 Expense dates are separate from creation/update timestamps. Relative dates follow the [timezone policy](product-intent.md#why-a-particular-timezone-policy). Update-timestamp maintenance remains to be defined when editing is implemented.
 

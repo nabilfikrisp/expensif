@@ -14,7 +14,7 @@ This document defines the intended expense-tracking experience and its scope.
 Expensif is a multi-user expense tracker. Users send natural-language expense messages to a bot, then view and correct their expenses in a web dashboard or through the bot.
 
 - Users register through the application and link a bot account using a short-lived, single-use API key. A linking key is not a general API bearer credential.
-- Expense commands resolve the linked owner, parse one or more items, and save immediately without a confirmation step.
+- Expense commands resolve the linked owner, produce one expense record initially, and save immediately without a confirmation step. Multiple expense records per message remain future scope; an expense may include [several items sharing one total](data-model.md#expenses).
 - Each user views and corrects their own expenses. Edits overwrite existing values.
 - Fixed global categories classify expenses. Unmatched items use the [chosen fallback category](#why-a-particular-fallback-category).
 - An expense date is separate from creation and update timestamps, supporting day/month grouping. Relative dates follow the [timezone policy](#why-a-particular-timezone-policy).
@@ -22,7 +22,7 @@ Expensif is a multi-user expense tracker. Users send natural-language expense me
 
 ## Initial scope
 
-The target includes authentication, account linking, message and expense storage, expense APIs, a web dashboard, bot corrections, and multiple items per message. The chosen logout behavior is recorded [below](#why-a-particular-logout-scope); remaining authentication work is tracked in [authentication follow-up](auth-follow-up.md).
+The initial target includes authentication, account linking, message and expense storage, expense APIs, a web dashboard, and bot corrections. The chosen logout behavior is recorded [below](#why-a-particular-logout-scope); remaining authentication work is tracked in [authentication follow-up](auth-follow-up.md).
 
 Budgeting, reporting, and edit history are outside the initial scope.
 
