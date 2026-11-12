@@ -1,8 +1,8 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { initTest, mockUser } from "../../helper";
-
 import { LinkedAccountError } from "@/modules/linked-account/error";
+import { initTest } from "@/test/helper/app";
+import { mockUser, seedUser } from "@/test/helper/auth";
 
 let ctx: Awaited<ReturnType<typeof initTest>>;
 let userId: string;
@@ -25,10 +25,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   await ctx.resetDb();
 
-  await ctx.services.auth.register(mockUser.email, mockUser.password, mockUser.name);
-
-  const user = await ctx.services.user.getUserByEmail(mockUser.email);
-  userId = user.id;
+  ({ userId } = await seedUser(ctx));
 });
 
 afterEach(() => {

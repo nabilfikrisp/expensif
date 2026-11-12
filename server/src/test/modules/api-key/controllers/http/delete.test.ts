@@ -1,24 +1,21 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import {
-  testBearerAuthentication,
-  createApiKey,
-  initTest,
-  registerAndGetToken,
-  mockUser,
-} from "../../../../helper";
-
 import { listApiKeysRespSchema } from "@/modules/api-key/controllers/http/list";
 import { ApiKeyError } from "@/modules/api-key/error";
 import { API_PREFIX } from "@/pkg/http";
 import { errorRespSchema, successRespSchema } from "@/shared/response.schema";
+import { initTest } from "@/test/helper/app";
+import { testBearerAuthentication } from "@/test/helper/assertions";
+import { seedUser, mockUser } from "@/test/helper/auth";
+import { createApiKey } from "@/test/helper/linked-account";
 
+let ctx: Awaited<ReturnType<typeof initTest>>;
 let app: OpenAPIHono;
 let resetDb: () => Promise<void>;
 
 beforeAll(async () => {
-  const ctx = await initTest();
+  ctx = await initTest();
   app = ctx.app;
   resetDb = ctx.resetDb;
   return () => ctx.client.end();
@@ -32,7 +29,7 @@ describe(`DELETE ${API_PREFIX}/api-key/{id}`, () => {
   testBearerAuthentication(() => app, "DELETE", "/api-key/550e8400-e29b-41d4-a716-446655440000");
 
   it("returns 200 and deletes the key", async () => {
-    const { accessToken } = await registerAndGetToken(app, mockUser);
+    const { accessToken } = await seedUser(ctx, mockUser);
     const key = await createApiKey(app, accessToken, "telegram");
     const res = await app.request(`${API_PREFIX}/api-key/${key.id}`, {
       method: "DELETE",
@@ -62,7 +59,7 @@ describe(`DELETE ${API_PREFIX}/api-key/{id}`, () => {
   });
 
   it("returns 404 for a nonexistent key", async () => {
-    const { accessToken } = await registerAndGetToken(app, mockUser);
+    const { accessToken } = await seedUser(ctx, mockUser);
     const res = await app.request(`${API_PREFIX}/api-key/550e8400-e29b-41d4-a716-446655440000`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${accessToken}` },
@@ -76,9 +73,9 @@ describe(`DELETE ${API_PREFIX}/api-key/{id}`, () => {
   });
 
   it("returns 404 for another user's key and leaves it unchanged", async () => {
-    const { accessToken } = await registerAndGetToken(app, mockUser);
+    const { accessToken } = await seedUser(ctx, mockUser);
     const key = await createApiKey(app, accessToken, "telegram");
-    const other = await registerAndGetToken(app, { ...mockUser, email: "other@example.com" });
+    const other = await seedUser(ctx, { ...mockUser, email: "other@example.com" });
     const res = await app.request(`${API_PREFIX}/api-key/${key.id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${other.accessToken}` },
@@ -105,7 +102,7 @@ describe(`DELETE ${API_PREFIX}/api-key/{id}`, () => {
   });
 
   it("returns 400 for an invalid key ID", async () => {
-    const { accessToken } = await registerAndGetToken(app, mockUser);
+    const { accessToken } = await seedUser(ctx, mockUser);
     const res = await app.request(`${API_PREFIX}/api-key/not-a-uuid`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${accessToken}` },

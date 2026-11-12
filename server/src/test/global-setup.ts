@@ -1,7 +1,7 @@
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import path from "node:path";
 
-import { initTestDb } from "./helper";
+import { initTestDb } from "@/test/helper/database";
 
 const migrationsFolder = path.resolve(import.meta.dirname, "../pkg/db/migrations");
 

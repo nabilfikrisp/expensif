@@ -23,7 +23,7 @@ Changes to these rules require a maintainer decision.
 
 9. User-owned HTTP resources use the authenticated token's user ID, never a request-supplied owner ID. Services scope reads and mutations to that owner; mutations by ID filter by both resource and owner IDs. Keep cross-user regression coverage for these endpoints.
 
-10. Tests mirror source paths under `server/src/test/`, including module controllers, `service.test.ts`, `use-case.test.ts`, and infrastructure under `pkg/`. HTTP files follow endpoint operations; shared setup stays in `test/helper.ts`.
+10. Tests mirror source paths under `server/src/test/`, including module controllers, `service.test.ts`, `use-case.test.ts`, and infrastructure under `pkg/`. HTTP files follow endpoint operations; shared setup stays in `test/helper/`.
 
 11. Test database setup and assertions use Drizzle queries and imported schema references. Use raw SQL for PostgreSQL-specific operations, interpolating schema objects for application tables and columns. Integration tests run against committed migrations to verify schema compatibility.
 

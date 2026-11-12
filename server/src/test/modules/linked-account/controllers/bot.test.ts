@@ -2,20 +2,16 @@ import { eq, sql } from "drizzle-orm";
 import { Api, Context } from "grammy";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  botCommand,
-  createApiKey,
-  initTest,
-  initTestBot,
-  mockUser,
-  registerAndGetToken,
-} from "../../../helper";
 import { listLinkedAccountsRespSchema } from "@/modules/linked-account/controllers/http/list";
 import { apiKeys, linkedAccounts } from "@/pkg/db/schema";
 import { API_PREFIX } from "@/pkg/http";
+import { initTest } from "@/test/helper/app";
+import { mockUser, seedUser } from "@/test/helper/auth";
+import { botCommand, initTestBot } from "@/test/helper/bot";
+import { createApiKey } from "@/test/helper/linked-account";
 
 let ctx: Awaited<ReturnType<typeof initTest>>;
-let tokens: Awaited<ReturnType<typeof registerAndGetToken>>;
+let tokens: Awaited<ReturnType<typeof seedUser>>;
 const reply = vi.fn<Context["reply"]>();
 const editMessageText = vi.fn<Api["editMessageText"]>();
 
@@ -25,7 +21,7 @@ beforeAll(async () => {
 });
 beforeEach(async () => {
   await ctx.resetDb();
-  tokens = await registerAndGetToken(ctx.app, mockUser);
+  tokens = await seedUser(ctx);
   reply.mockReset().mockResolvedValue({ message_id: 1 } as Awaited<ReturnType<Context["reply"]>>);
   editMessageText.mockReset().mockResolvedValue(true);
   vi.spyOn(Context.prototype, "reply").mockImplementation(reply);

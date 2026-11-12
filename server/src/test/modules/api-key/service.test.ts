@@ -2,10 +2,10 @@ import { eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { initTest, mockUser } from "../../helper";
-
 import { ApiKeyError } from "@/modules/api-key/error";
 import { apiKeys } from "@/modules/api-key/schema";
+import { initTest } from "@/test/helper/app";
+import { seedUser } from "@/test/helper/auth";
 
 let ctx: Awaited<ReturnType<typeof initTest>>;
 let userId: string;
@@ -22,10 +22,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   await ctx.resetDb();
 
-  await ctx.services.auth.register(mockUser.email, mockUser.password, mockUser.name);
-
-  const user = await ctx.services.user.getUserByEmail(mockUser.email);
-  userId = user.id;
+  ({ userId } = await seedUser(ctx));
 });
 
 // Transaction-local timeouts bound a deliberately blocked operation; the bot cannot configure that transaction.

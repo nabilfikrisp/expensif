@@ -1,13 +1,14 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { initTest, mockUser, withSessionWritesBlocked } from "../../../../helper";
-
 import { registerRespSchema } from "@/modules/auth/controllers/http/register";
 import { AuthError } from "@/modules/auth/error";
 import { sessions, users } from "@/pkg/db/schema";
 import { API_PREFIX } from "@/pkg/http";
 import { errorRespSchema } from "@/shared/response.schema";
+import { initTest } from "@/test/helper/app";
+import { mockUser } from "@/test/helper/auth";
+import { withSessionWritesBlocked } from "@/test/helper/failures";
 
 let ctx: Awaited<ReturnType<typeof initTest>>;
 let app: OpenAPIHono;

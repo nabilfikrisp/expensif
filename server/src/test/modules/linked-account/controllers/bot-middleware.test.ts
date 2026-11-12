@@ -2,14 +2,6 @@ import { Api, BotError, Context } from "grammy";
 import type { Message, Update, User } from "grammy/types";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  initTest,
-  initTestBot,
-  registerAndGetToken,
-  createApiKey,
-  botCommand,
-} from "../../../helper";
-
 import * as expenseParser from "@/modules/expense/parser";
 import { initRequireLinkedAccountMiddleware } from "@/modules/linked-account/controllers/bot-middleware";
 import { listLinkedAccountsRespSchema } from "@/modules/linked-account/controllers/http/list";
@@ -17,6 +9,10 @@ import { users } from "@/modules/user/schema";
 import { initDb } from "@/pkg/db";
 import { API_PREFIX } from "@/pkg/http";
 import { initLogger } from "@/pkg/logger";
+import { initTest } from "@/test/helper/app";
+import { registerAndGetToken } from "@/test/helper/auth";
+import { initTestBot, botCommand } from "@/test/helper/bot";
+import { createApiKey } from "@/test/helper/linked-account";
 
 let ctx: Awaited<ReturnType<typeof initTest>>;
 const userId = crypto.randomUUID();

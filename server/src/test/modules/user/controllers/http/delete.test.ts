@@ -2,18 +2,14 @@ import type { OpenAPIHono } from "@hono/zod-openapi";
 import { eq } from "drizzle-orm";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import {
-  createLinkedUser,
-  initTest,
-  registerAndGetToken,
-  sessionHeaders,
-} from "../../../../helper";
-
 import { meRespSchema } from "@/modules/auth/controllers/http/me";
 import { listLinkedAccountsRespSchema } from "@/modules/linked-account/controllers/http/list";
 import { UserError } from "@/modules/user/error";
 import { sessions, users } from "@/pkg/db/schema";
 import { API_PREFIX } from "@/pkg/http";
+import { initTest } from "@/test/helper/app";
+import { registerAndGetToken, sessionHeaders } from "@/test/helper/auth";
+import { createLinkedUser } from "@/test/helper/linked-account";
 
 let app: OpenAPIHono;
 let ctx: Awaited<ReturnType<typeof initTest>>;

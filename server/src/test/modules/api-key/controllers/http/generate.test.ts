@@ -1,21 +1,18 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import {
-  testBearerAuthentication,
-  initTest,
-  registerAndGetToken,
-  mockUser,
-} from "../../../../helper";
-
 import { generateApiKeyRespSchema } from "@/modules/api-key/controllers/http/generate";
 import { API_PREFIX } from "@/pkg/http";
+import { initTest } from "@/test/helper/app";
+import { testBearerAuthentication } from "@/test/helper/assertions";
+import { seedUser, registerAndGetToken, mockUser } from "@/test/helper/auth";
 
+let ctx: Awaited<ReturnType<typeof initTest>>;
 let app: OpenAPIHono;
 let resetDb: () => Promise<void>;
 
 beforeAll(async () => {
-  const ctx = await initTest();
+  ctx = await initTest();
   app = ctx.app;
   resetDb = ctx.resetDb;
   return () => ctx.client.end();
@@ -50,7 +47,7 @@ describe(`POST ${API_PREFIX}/api-key`, () => {
   });
 
   it("returns 201 without an optional label", async () => {
-    const { accessToken } = await registerAndGetToken(app, mockUser);
+    const { accessToken } = await seedUser(ctx, mockUser);
     const res = await app.request(`${API_PREFIX}/api-key`, {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
@@ -65,7 +62,7 @@ describe(`POST ${API_PREFIX}/api-key`, () => {
   });
 
   it("returns 400 for a non-string label", async () => {
-    const { accessToken } = await registerAndGetToken(app, mockUser);
+    const { accessToken } = await seedUser(ctx, mockUser);
     const res = await app.request(`${API_PREFIX}/api-key`, {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },

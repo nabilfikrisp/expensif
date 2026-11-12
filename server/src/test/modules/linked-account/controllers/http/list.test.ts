@@ -1,10 +1,10 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { createLinkedUser, initTest } from "../../../../helper";
-
 import { meRespSchema } from "@/modules/auth/controllers/http/me";
 import { listLinkedAccountsRespSchema } from "@/modules/linked-account/controllers/http/list";
 import { API_PREFIX } from "@/pkg/http";
+import { initTest } from "@/test/helper/app";
+import { createLinkedUser } from "@/test/helper/linked-account";
 
 let ctx: Awaited<ReturnType<typeof initTest>>;
 

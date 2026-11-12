@@ -1,18 +1,18 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { sessions } from "@/pkg/db/schema";
+import { API_PREFIX } from "@/pkg/http";
+import { errorRespSchema, tokenRespSchema } from "@/shared/response.schema";
+import { initTest } from "@/test/helper/app";
 import {
-  initTest,
   registerAndGetToken,
+  seedSession,
   mockUser,
   sessionHeaders,
   sessionCookies,
-  withSessionWritesBlocked,
-} from "../../../../helper";
-import { sessions } from "@/pkg/db/schema";
-
-import { API_PREFIX } from "@/pkg/http";
-import { errorRespSchema, tokenRespSchema } from "@/shared/response.schema";
+} from "@/test/helper/auth";
+import { withSessionWritesBlocked } from "@/test/helper/failures";
 
 let ctx: Awaited<ReturnType<typeof initTest>>;
 let app: OpenAPIHono;
@@ -37,7 +37,7 @@ describe(`POST ${API_PREFIX}/auth/logout`, () => {
     });
 
   it("a concurrent logout revokes any token returned by the racing refresh", async () => {
-    const original = await registerAndGetToken(app, mockUser);
+    const original = await seedSession(ctx);
     const [refresh, logout] = await Promise.all([
       post("refresh", original),
       post("logout", original),
@@ -52,7 +52,7 @@ describe(`POST ${API_PREFIX}/auth/logout`, () => {
   });
 
   it("late refresh cookies replayed by either tab cannot restore a logged-out session", async () => {
-    const original = await registerAndGetToken(app, mockUser);
+    const original = await seedSession(ctx);
     // Hold the response at the transport boundary while another tab logs out using its old cookie.
     const delayedRefresh = await post("refresh", original);
     expect(delayedRefresh.status).toBe(200);
@@ -83,7 +83,7 @@ describe(`POST ${API_PREFIX}/auth/logout`, () => {
   });
 
   it("returns 500 and clears cookies when PostgreSQL cannot revoke, leaving the session unchanged", async () => {
-    const original = await registerAndGetToken(app, mockUser);
+    const original = await seedSession(ctx);
     const before = await ctx.db.select().from(sessions);
     await withSessionWritesBlocked(ctx, async (blockedApp) => {
       const response = await blockedApp.request(`${API_PREFIX}/auth/logout`, {
@@ -139,7 +139,7 @@ describe(`POST ${API_PREFIX}/auth/logout`, () => {
   it.each(["refresh", "logout"])(
     "%s rejects invalid CSRF without changing session state",
     async (operation) => {
-      const original = await registerAndGetToken(app, mockUser);
+      const original = await seedSession(ctx);
       const before = await ctx.db.select().from(sessions);
       const invalidHeaders: Record<string, string>[] = [
         { Cookie: `refresh_token=${original.refreshToken}`, "X-CSRF-Token": original.csrfToken },

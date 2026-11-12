@@ -1,15 +1,15 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { API_PREFIX } from "@/pkg/http";
+import { initTest } from "@/test/helper/app";
 import {
   loginAndGetTokens,
-  initTest,
   mockUser,
   registerAndGetToken,
+  seedSession,
   refreshSession,
   sessionCookies,
-} from "../../../../helper";
-
-import { API_PREFIX } from "@/pkg/http";
+} from "@/test/helper/auth";
 
 let ctx: Awaited<ReturnType<typeof initTest>>;
 const newPassword = "updated-password-123";
@@ -19,8 +19,7 @@ beforeAll(async () => {
 });
 beforeEach(async () => ctx.resetDb());
 
-async function setup() {
-  const tokens = await registerAndGetToken(ctx.app, mockUser);
+function withRequestHeaders(tokens: Awaited<ReturnType<typeof registerAndGetToken>>) {
   return {
     ...tokens,
     headers: {
@@ -34,7 +33,7 @@ async function setup() {
 
 describe("POST /auth/change-password", () => {
   it("does not let a racing old-password login escape revocation", async () => {
-    const current = await setup();
+    const current = withRequestHeaders(await seedSession(ctx));
     const [login, change] = await Promise.all([
       ctx.app.request(`${API_PREFIX}/auth/login`, {
         method: "POST",
@@ -57,7 +56,7 @@ describe("POST /auth/change-password", () => {
     expect((await refreshSession(ctx.app, current)).status).toBe(401);
   });
   it("revokes every owned session, clears cookies, and requires the new password", async () => {
-    const current = await setup();
+    const current = withRequestHeaders(await registerAndGetToken(ctx.app, mockUser));
     const other = await loginAndGetTokens(ctx.app, mockUser.email, mockUser.password);
     const unrelated = await registerAndGetToken(ctx.app, {
       ...mockUser,
@@ -96,7 +95,7 @@ describe("POST /auth/change-password", () => {
     "missing-csrf",
     "supplied-user-id",
   ])("rejects %s without changing credentials or sessions", async (failure) => {
-    const current = await setup();
+    const current = withRequestHeaders(await seedSession(ctx));
     const headers: Record<string, string> = { ...current.headers };
     const body: Record<string, string> = { currentPassword: mockUser.password, newPassword };
     let status = 400;

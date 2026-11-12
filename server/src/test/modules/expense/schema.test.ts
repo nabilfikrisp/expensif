@@ -1,9 +1,8 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { initTestDb } from "../../helper";
-
 import { expenses } from "@/modules/expense/schema";
 import { users } from "@/modules/user/schema";
+import { initTestDb } from "@/test/helper/database";
 
 let ctx: Awaited<ReturnType<typeof initTestDb>>;
 const userId = crypto.randomUUID();

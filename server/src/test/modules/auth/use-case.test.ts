@@ -1,8 +1,9 @@
 import { eq, sql } from "drizzle-orm";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { initTest, mockUser } from "../../helper";
 import { initAuthUseCase } from "@/modules/auth/use-case";
 import { sessions, users } from "@/pkg/db/schema";
+import { initTest } from "@/test/helper/app";
+import { mockUser } from "@/test/helper/auth";
 
 let ctx: Awaited<ReturnType<typeof initTest>>;
 const register = () => ctx.useCases.auth.register(mockUser.email, mockUser.password, mockUser.name);

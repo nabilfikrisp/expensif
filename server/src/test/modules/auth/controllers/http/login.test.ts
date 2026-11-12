@@ -2,11 +2,11 @@ import type { OpenAPIHono } from "@hono/zod-openapi";
 import { decodeJwt } from "jose";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { initTest, registerAndGetToken, mockUser } from "../../../../helper";
-
 import { AuthError } from "@/modules/auth/error";
 import { API_PREFIX } from "@/pkg/http";
 import { errorRespSchema, tokenRespSchema } from "@/shared/response.schema";
+import { initTest } from "@/test/helper/app";
+import { registerAndGetToken, mockUser } from "@/test/helper/auth";
 
 let ctx: Awaited<ReturnType<typeof initTest>>;
 let app: OpenAPIHono;

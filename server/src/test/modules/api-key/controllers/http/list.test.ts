@@ -1,22 +1,19 @@
 import type { OpenAPIHono } from "@hono/zod-openapi";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import {
-  testBearerAuthentication,
-  createApiKey,
-  initTest,
-  registerAndGetToken,
-  mockUser,
-} from "../../../../helper";
-
 import { listApiKeysRespSchema } from "@/modules/api-key/controllers/http/list";
 import { API_PREFIX } from "@/pkg/http";
+import { initTest } from "@/test/helper/app";
+import { testBearerAuthentication } from "@/test/helper/assertions";
+import { seedUser, mockUser } from "@/test/helper/auth";
+import { createApiKey } from "@/test/helper/linked-account";
 
+let ctx: Awaited<ReturnType<typeof initTest>>;
 let app: OpenAPIHono;
 let resetDb: () => Promise<void>;
 
 beforeAll(async () => {
-  const ctx = await initTest();
+  ctx = await initTest();
   app = ctx.app;
   resetDb = ctx.resetDb;
   return () => ctx.client.end();
@@ -75,7 +72,7 @@ describe(`GET ${API_PREFIX}/api-key`, () => {
   });
 
   it("returns 200 with an empty list when the user has no keys", async () => {
-    const { accessToken } = await registerAndGetToken(app, mockUser);
+    const { accessToken } = await seedUser(ctx, mockUser);
     const res = await app.request(`${API_PREFIX}/api-key`, {
       method: "GET",
       headers: { Authorization: `Bearer ${accessToken}` },
@@ -89,9 +86,9 @@ describe(`GET ${API_PREFIX}/api-key`, () => {
   });
 
   it("returns only the authenticated user's keys without exposing secrets", async () => {
-    const { accessToken } = await registerAndGetToken(app, mockUser);
+    const { accessToken } = await seedUser(ctx, mockUser);
     await createApiKey(app, accessToken, "own key");
-    const other = await registerAndGetToken(app, { ...mockUser, email: "other@example.com" });
+    const other = await seedUser(ctx, { ...mockUser, email: "other@example.com" });
     await createApiKey(app, other.accessToken, "other key");
     const res = await app.request(`${API_PREFIX}/api-key`, {
       method: "GET",
@@ -112,7 +109,7 @@ describe(`GET ${API_PREFIX}/api-key`, () => {
   });
 
   it("filters by label with pagination", async () => {
-    const { accessToken } = await registerAndGetToken(app, mockUser);
+    const { accessToken } = await seedUser(ctx, mockUser);
     for (const label of ["telegram one", "telegram two", "another platform"]) {
       await createApiKey(app, accessToken, label);
     }
@@ -130,7 +127,7 @@ describe(`GET ${API_PREFIX}/api-key`, () => {
   });
 
   it("filters active, revoked, and all keys", async () => {
-    const { accessToken } = await registerAndGetToken(app, mockUser);
+    const { accessToken } = await seedUser(ctx, mockUser);
     const active = await createApiKey(app, accessToken);
     const revoked = await createApiKey(app, accessToken);
     const changed = await app.request(`${API_PREFIX}/api-key/${revoked.id}`, {
@@ -158,7 +155,7 @@ describe(`GET ${API_PREFIX}/api-key`, () => {
   });
 
   it("returns 400 for a non-positive page", async () => {
-    const { accessToken } = await registerAndGetToken(app, mockUser);
+    const { accessToken } = await seedUser(ctx, mockUser);
     const res = await app.request(`${API_PREFIX}/api-key?page=0`, {
       method: "GET",
       headers: { Authorization: `Bearer ${accessToken}` },
@@ -169,7 +166,7 @@ describe(`GET ${API_PREFIX}/api-key`, () => {
   });
 
   it("returns 400 for a limit above 100", async () => {
-    const { accessToken } = await registerAndGetToken(app, mockUser);
+    const { accessToken } = await seedUser(ctx, mockUser);
     const res = await app.request(`${API_PREFIX}/api-key?limit=101`, {
       method: "GET",
       headers: { Authorization: `Bearer ${accessToken}` },
@@ -180,7 +177,7 @@ describe(`GET ${API_PREFIX}/api-key`, () => {
   });
 
   it("returns 400 for an invalid status", async () => {
-    const { accessToken } = await registerAndGetToken(app, mockUser);
+    const { accessToken } = await seedUser(ctx, mockUser);
     const res = await app.request(`${API_PREFIX}/api-key?status=invalid`, {
       method: "GET",
       headers: { Authorization: `Bearer ${accessToken}` },

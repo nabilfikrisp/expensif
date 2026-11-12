@@ -4,19 +4,19 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createHash } from "node:crypto";
 
-import {
-  initTest,
-  registerAndGetToken,
-  mockUser,
-  sessionHeaders,
-  sessionCookies,
-  withSessionWritesBlocked,
-} from "../../../../helper";
-
 import { AuthError } from "@/modules/auth/error";
 import { sessions } from "@/pkg/db/schema";
 import { API_PREFIX } from "@/pkg/http";
 import { errorRespSchema, tokenRespSchema } from "@/shared/response.schema";
+import { initTest } from "@/test/helper/app";
+import {
+  registerAndGetToken,
+  seedSession,
+  mockUser,
+  sessionHeaders,
+  sessionCookies,
+} from "@/test/helper/auth";
+import { withSessionWritesBlocked } from "@/test/helper/failures";
 
 let ctx: Awaited<ReturnType<typeof initTest>>;
 let app: OpenAPIHono;
@@ -38,7 +38,7 @@ describe(`POST ${API_PREFIX}/auth/refresh`, () => {
     app.request(`${API_PREFIX}/auth/refresh`, { method: "POST", headers: sessionHeaders(tokens) });
 
   it.each(["idle", "absolute"])("bounds rotated cookies by the %s deadline", async (kind) => {
-    const original = await registerAndGetToken(app, mockUser);
+    const original = await seedSession(ctx);
     if (kind === "absolute") {
       await ctx.db
         .update(sessions)
@@ -66,7 +66,7 @@ describe(`POST ${API_PREFIX}/auth/refresh`, () => {
   });
 
   it("concurrent refreshes rotate once and return usable access tokens without grace cookies", async () => {
-    const original = await registerAndGetToken(app, mockUser);
+    const original = await seedSession(ctx);
     const [before] = await ctx.db.select().from(sessions);
     expect(before.tokenHash).toBe(createHash("sha256").update(original.refreshToken).digest("hex"));
     expect(Buffer.from(original.refreshToken, "base64url")).toHaveLength(32);
@@ -94,7 +94,7 @@ describe(`POST ${API_PREFIX}/auth/refresh`, () => {
   });
 
   it("commits reuse revocation before returning 401 and rejects the current token afterward", async () => {
-    const original = await registerAndGetToken(app, mockUser);
+    const original = await seedSession(ctx);
     const rotated = await refresh(original);
     expect(rotated.status).toBe(200);
     const current = sessionCookies(rotated);
@@ -110,7 +110,7 @@ describe(`POST ${API_PREFIX}/auth/refresh`, () => {
   });
 
   it("rejects unknown and older tokens without changing the surviving session", async () => {
-    const original = await registerAndGetToken(app, mockUser);
+    const original = await seedSession(ctx);
     const first = await refresh(original);
     expect(first.status).toBe(200);
     const second = await refresh(sessionCookies(first));
@@ -128,7 +128,7 @@ describe(`POST ${API_PREFIX}/auth/refresh`, () => {
   it.each(["idle", "absolute"])(
     "rejects %s expiry for current and previous tokens without cleanup",
     async (kind) => {
-      const original = await registerAndGetToken(app, mockUser);
+      const original = await seedSession(ctx);
       const rotated = await refresh(original);
       expect(rotated.status).toBe(200);
       if (kind === "idle") {
@@ -151,7 +151,7 @@ describe(`POST ${API_PREFIX}/auth/refresh`, () => {
   it.each(["idle", "absolute"])(
     "rechecks %s expiry after waiting for an unchanged row lock",
     async (kind) => {
-      const original = await registerAndGetToken(app, mockUser);
+      const original = await seedSession(ctx);
       const deadline = sql`clock_timestamp() + interval '3 seconds'`;
       if (kind === "absolute") {
         await ctx.db.update(sessions).set({ absoluteExpiresAt: deadline });
@@ -214,7 +214,7 @@ describe(`POST ${API_PREFIX}/auth/refresh`, () => {
   );
 
   it("returns 500 without cookies or session changes when PostgreSQL cannot rotate", async () => {
-    const original = await registerAndGetToken(app, mockUser);
+    const original = await seedSession(ctx);
     const before = await ctx.db.select().from(sessions);
     await withSessionWritesBlocked(ctx, async (blockedApp) => {
       const response = await blockedApp.request(`${API_PREFIX}/auth/refresh`, {
@@ -230,7 +230,7 @@ describe(`POST ${API_PREFIX}/auth/refresh`, () => {
   });
 
   it("extends idle expiry on grace acceptance without changing the absolute deadline or cookies", async () => {
-    const original = await registerAndGetToken(app, mockUser);
+    const original = await seedSession(ctx);
     expect((await refresh(original)).status).toBe(200);
     await ctx.db.update(sessions).set({ lastUsedAt: sql`clock_timestamp() - interval '1 hour'` });
     const [before] = await ctx.db.select().from(sessions);

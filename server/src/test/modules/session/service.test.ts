@@ -2,9 +2,9 @@ import { eq, sql } from "drizzle-orm";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createHash } from "node:crypto";
 
-import { initTest, mockUser } from "../../helper";
-
 import { sessions } from "@/pkg/db/schema";
+import { initTest } from "@/test/helper/app";
+import { seedUser } from "@/test/helper/auth";
 
 let ctx: Awaited<ReturnType<typeof initTest>>;
 const tokenHash = (token: string) => createHash("sha256").update(token).digest("hex");
@@ -17,14 +17,11 @@ beforeEach(async () => ctx.resetDb());
 // Cleanup has no request entry point; call the operation directly without waiting for the daily scheduler.
 describe("SessionService.cleanupExpiredSessions", () => {
   it("deletes idle and absolute expired sessions while preserving unexpired rows", async () => {
-    const active = await ctx.useCases.auth.register(
-      mockUser.email,
-      mockUser.password,
-      mockUser.name
-    );
-    const idle = await ctx.useCases.auth.login(mockUser.email, mockUser.password);
-    const absolute = await ctx.useCases.auth.login(mockUser.email, mockUser.password);
-    const revoked = await ctx.useCases.auth.login(mockUser.email, mockUser.password);
+    const { userId } = await seedUser(ctx);
+    const active = await ctx.services.session.createSession(userId);
+    const idle = await ctx.services.session.createSession(userId);
+    const absolute = await ctx.services.session.createSession(userId);
+    const revoked = await ctx.services.session.createSession(userId);
     await ctx.useCases.auth.logout(revoked.refreshToken);
     await ctx.db
       .update(sessions)

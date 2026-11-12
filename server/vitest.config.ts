@@ -12,6 +12,7 @@ export default defineConfig({
   test: {
     environment: "node",
     globalSetup: path.join(testDir, "global-setup.ts"),
+    isolate: false,
     fileParallelism: false,
     sequence: { concurrent: false },
   },
