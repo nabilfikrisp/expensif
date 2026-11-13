@@ -9,12 +9,13 @@ let isShuttingDown = false;
 interface ShutdownOptions {
   logger: Logger;
   bot: Bot;
+  botLifecycle: Promise<void>;
   httpServer: ServerType;
   dbClient: DbClient;
   stopJobs: () => Promise<void>;
 }
 
-const SHUTDOWN_TIMEOUT = 10_000; // 10 seconds
+const SHUTDOWN_TIMEOUT_SECONDS = 10_000;
 
 export async function shutdown(signal: string, opts: ShutdownOptions) {
   if (isShuttingDown) {
@@ -22,22 +23,28 @@ export async function shutdown(signal: string, opts: ShutdownOptions) {
   }
   isShuttingDown = true;
 
-  const { logger, bot, httpServer, dbClient, stopJobs } = opts;
+  const { logger, bot, botLifecycle, httpServer, dbClient, stopJobs } = opts;
 
   logger.info(`Received ${signal}, shutting down gracefully...`);
 
-  const forceExitTimeout = setTimeout(() => {
+  setTimeout(() => {
     logger.error("Shutdown timed out, forcing exit");
     process.exit(1);
-  }, SHUTDOWN_TIMEOUT);
-  forceExitTimeout.unref();
+  }, SHUTDOWN_TIMEOUT_SECONDS);
 
-  try {
+  async function stopBot() {
+    await bot.stop();
+    // stop() acknowledges updates but does not wait for their handlers.
+    await botLifecycle;
+    logger.info("Telegram bot stopped");
+  }
+
+  async function stopScheduledJobs() {
     await stopJobs();
     logger.info("Scheduled jobs stopped");
-    await bot.stop();
-    logger.info("Telegram bot stopped");
+  }
 
+  async function closeHttp() {
     await new Promise<void>((resolve, reject) => {
       httpServer.close((err) => {
         if (err) {
@@ -48,6 +55,15 @@ export async function shutdown(signal: string, opts: ShutdownOptions) {
       });
     });
     logger.info("HTTP server closed");
+  }
+
+  try {
+    // Stop all intake immediately, then drain every database consumer before closing the pool.
+    const botStopped = stopBot();
+    const jobsStopped = stopScheduledJobs();
+    const httpClosed = closeHttp();
+
+    await Promise.all([botStopped, jobsStopped, httpClosed]);
 
     await dbClient.end();
     logger.info("Database connection closed");

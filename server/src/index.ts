@@ -23,7 +23,7 @@ const sessionCleanup = initScheduledJob({
 
 await sessionCleanup.start();
 const httpServer = startHttp(app, logger, env.PORT);
-startBot(bot, logger);
+const botLifecycle = startBot(bot, logger);
 
 process.on(
   "SIGTERM",
@@ -31,6 +31,7 @@ process.on(
     void shutdown("SIGTERM", {
       logger,
       bot,
+      botLifecycle,
       httpServer,
       dbClient: client,
       stopJobs: () => sessionCleanup.stop(),
@@ -42,6 +43,7 @@ process.on(
     void shutdown("SIGINT", {
       logger,
       bot,
+      botLifecycle,
       httpServer,
       dbClient: client,
       stopJobs: () => sessionCleanup.stop(),

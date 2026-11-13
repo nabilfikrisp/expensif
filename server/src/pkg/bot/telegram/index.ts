@@ -22,8 +22,15 @@ export function initBot({ token, logger }: InitBotParams) {
   return bot;
 }
 
-export function startBot(bot: Bot, logger: Logger) {
-  void bot
+/**
+ * Starts polling and returns a lifetime promise, not a readiness promise.
+ * Awaiting it blocks subsequent code until polling and handlers finish; use onStart
+ * for readiness. This server retains the promise so HTTP and signal setup can proceed,
+ * then awaits it during shutdown after requesting bot.stop(). Terminal failures are
+ * handled below, even when the caller does not await the promise immediately.
+ */
+export function startBot(bot: Bot, logger: Logger): Promise<void> {
+  const lifecycle = bot
     .start({
       onStart: () => {
         logger.info("Telegram Bot is running...");
@@ -38,4 +45,6 @@ export function startBot(bot: Bot, logger: Logger) {
       // eslint-disable-next-line n/no-process-exit -- HTTP must not outlive a failed bot.
       process.exit(1);
     });
+
+  return lifecycle;
 }

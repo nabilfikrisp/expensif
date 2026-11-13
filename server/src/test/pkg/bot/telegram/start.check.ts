@@ -24,7 +24,7 @@ if (scenario) {
   if (scenario !== "cancel") {
     setInterval(() => {}, 1000);
   }
-  startBot(bot, logger);
+  await startBot(bot, logger);
 } else {
   for (const failure of ["error", "non-error", "cancel"]) {
     const result = spawnSync(
