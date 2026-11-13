@@ -18,11 +18,26 @@ const cases = [
   { text: "Makan malam 1,5jt tanggal 6 November 2026", amount: "1500000", date: "2026-11-06" },
   { text: "Makan malam 1.5jt tanggal 6 November 2026", amount: "1500000", date: "2026-11-06" },
   { text: "Bakso 15 ribu kemarin", amount: "15000" },
+  { text: "beli pisang goceng", amount: "5000", category: "food", daysAgo: 0 },
   {
-    text: "gua beli rokok, mie, es teh, totalnya 50k",
+    text: "beli pisang 2 buah goceng",
+    amount: "5000",
+    category: "food",
+    daysAgo: 0,
+    quantity: "2 buah",
+  },
+  {
+    text: "beli pisang 2 buah goceng per buah",
+    amount: "10000",
+    category: "food",
+    daysAgo: 0,
+    quantity: "2 buah",
+  },
+  {
+    text: "gua beli pisang, mie, es teh, totalnya 50k",
     amount: "50000",
     daysAgo: 0,
-    items: ["rokok", "mie", "es teh"],
+    items: ["pisang", "mie", "es teh"],
   },
 ];
 
@@ -44,7 +59,10 @@ for (const scenario of cases) {
       scenario.text
     );
   } else {
-    assert.equal(result.category, "food", scenario.text);
+    assert.equal(result.category, scenario.category ?? "food", scenario.text);
+  }
+  if (scenario.quantity) {
+    assert.ok(result.note?.toLowerCase().includes(scenario.quantity), scenario.text);
   }
   const relativeDate = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Jakarta",

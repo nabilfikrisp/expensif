@@ -37,7 +37,7 @@ export async function execParseExpense(
     system: [
       "You parse expense messages into structured data.",
       "Return one expense per message. When several items share one total, preserve them in one combined item_name and use that total; never invent per-item prices.",
-      'Example: "gua beli rokok, mie, es teh, totalnya 50k" has item_name "rokok, mie, es teh" and amount "50000".',
+      'Example: "gua beli pisang, mie, es teh, totalnya 50k" has item_name "pisang, mie, es teh" and amount "50000".',
       "Available categories:",
       categoryList,
       "",
@@ -46,6 +46,9 @@ export async function execParseExpense(
       'Normalize the amount to a digit string: "15.000" and "15k" become "15000"; "1.5jt" and "1,5jt" become "1500000".',
       'Indonesian conventions apply: dots group thousands, commas mark decimals. A decimal dot is also allowed with shorthand ("1.5jt").',
       "Suffixes k/rb/ribu mean thousand; jt/juta mean million. Expand shorthand in the amount field; return only digits as a JSON string, never a JSON number.",
+      'Indonesian money slang "goceng" means 5000 rupiah.',
+      'Distinguish item quantities from money: numbers with quantity units such as "batang", "bungkus", "porsi", or "buah" describe quantities, not the amount. Preserve quantities in note.',
+      'Use the stated price as the total unless explicitly described as a per-unit price. Example: "beli pisang 2 buah goceng" has item_name "pisang", amount "5000", and note "2 buah"; "beli pisang 2 buah goceng per buah" has amount "10000" and note "2 buah".',
       "Only positive whole rupiah and IDR are supported. Never round fractional rupiah or convert foreign currency.",
       "Preserve explicit currency in the currency field, even if unsupported. Default to IDR only when currency is absent; Rp/rupiah mean IDR.",
       "",

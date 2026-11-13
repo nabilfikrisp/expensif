@@ -25,6 +25,8 @@ export function registerExpenseCommands({
       return;
     }
 
+    const processing = await ctx.reply("⏳ Processing...");
+
     let result: IngestExpenseResp;
     try {
       const request = ingestExpenseReqSchema.parse({
@@ -39,7 +41,9 @@ export function registerExpenseCommands({
       result = await expenseUseCase.ingestExpense(request);
     } catch (error) {
       if (LinkedAccountError.isAccountNotFound(error)) {
-        await ctx.reply(
+        await ctx.api.editMessageText(
+          ctx.chat.id,
+          processing.message_id,
           "Link your account first using /link <api-key> in a private chat with the bot."
         );
         return;
@@ -53,14 +57,20 @@ export function registerExpenseCommands({
         },
         "Failed to save expense"
       );
-      await ctx.reply("❌ Failed to save expense. Please try again.");
+      await ctx.api.editMessageText(
+        ctx.chat.id,
+        processing.message_id,
+        "❌ Failed to save expense. Please try again."
+      );
       return;
     }
 
     // Saving has committed. A reply failure must not become a save-failure response.
     try {
       const { expense } = ingestExpenseRespSchema.parse(result);
-      await ctx.reply(
+      await ctx.api.editMessageText(
+        ctx.chat.id,
+        processing.message_id,
         [
           "✅ Saved expense:",
           `Item: ${expense.itemName}`,

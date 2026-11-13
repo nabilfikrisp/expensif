@@ -1,5 +1,5 @@
 import { eq, sql } from "drizzle-orm";
-import { BotError, Context } from "grammy";
+import { Api, BotError, Context } from "grammy";
 import type { Message, Update } from "grammy/types";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -18,6 +18,7 @@ import { expenseModel } from "@/test/helper/expense-model";
 let ctx: Awaited<ReturnType<typeof initTest>>;
 const userId = crypto.randomUUID();
 const reply = vi.fn<Context["reply"]>();
+const editMessageText = vi.fn<Api["editMessageText"]>();
 const modelResponse = vi.fn<() => Promise<unknown>>();
 const response = {
   message_id: 1,
@@ -81,6 +82,8 @@ beforeEach(async () => {
     .insert(users)
     .values({ id: userId, name: "Owner", email: "owner@example.com", passwordHash: "unused" });
   reply.mockReset().mockResolvedValue(response);
+  editMessageText.mockReset().mockResolvedValue({ ...response, edit_date: 0 });
+  vi.spyOn(Api.prototype, "editMessageText").mockImplementation(editMessageText);
   vi.spyOn(Context.prototype, "reply").mockImplementation(reply);
   modelResponse.mockReset().mockResolvedValue(parsed);
 });
@@ -99,6 +102,7 @@ describe("expense command ingestion", () => {
         }
         update.message.chat = { id: -100, type: chatType, title: "Test" };
         reply.mockClear();
+        editMessageText.mockClear();
         await bot.handleUpdate(update);
         expect(reply).toHaveBeenCalledExactlyOnceWith("Please use this bot in a private chat.");
       }
@@ -110,8 +114,8 @@ describe("expense command ingestion", () => {
   it.each([
     { text: "bakso 15k", itemName: "bakso", amount: "15000" },
     {
-      text: "gua beli rokok, mie, es teh, totalnya 50k",
-      itemName: "rokok, mie, es teh",
+      text: "gua beli pisang, mie, es teh, totalnya 50k",
+      itemName: "pisang, mie, es teh",
       amount: "50000",
     },
     { text: "barang 9007199254740993", itemName: "barang", amount: "9007199254740993" },
@@ -119,17 +123,18 @@ describe("expense command ingestion", () => {
     "saves one expense for $text with exact amount $amount and returns it on retry",
     async ({ text, itemName, amount }) => {
       const account = await link();
-      modelResponse.mockResolvedValue({
-        ...parsed,
-        item_name: itemName,
-        amount,
+      modelResponse.mockImplementation(async () => {
+        expect(reply).toHaveBeenCalledExactlyOnceWith("⏳ Processing...");
+        expect(editMessageText).not.toHaveBeenCalled();
+        expect(await ctx.db.select().from(expenses)).toEqual([]);
+        return { ...parsed, item_name: itemName, amount };
       });
       const { bot, model } = createBot();
       const update = command(`/expense ${text}`);
-      reply.mockImplementationOnce(async () => {
+      editMessageText.mockImplementationOnce(async () => {
         // This pool read sees the expense only after the use-case transaction commits.
         expect(await ctx.db.select().from(expenses)).toHaveLength(1);
-        return response;
+        return { ...response, edit_date: 0 };
       });
       await bot.handleUpdate(update);
       expect(
@@ -159,12 +164,21 @@ describe("expense command ingestion", () => {
           expenseDate: parsed.date,
         }),
       ]);
-      expect(reply).toHaveBeenCalledWith(expect.stringContaining("✅ Saved expense:"));
+      expect(reply).toHaveBeenCalledExactlyOnceWith("⏳ Processing...");
+      expect(editMessageText).toHaveBeenCalledWith(
+        123,
+        response.message_id,
+        expect.stringContaining("✅ Saved expense:")
+      );
       await bot.handleUpdate(update);
       expect(modelResponse).toHaveBeenCalledOnce();
       expect(await ctx.db.select().from(messages)).toEqual(savedMessages);
       expect(await ctx.db.select().from(expenses)).toEqual(savedExpenses);
-      expect(reply).toHaveBeenLastCalledWith(expect.stringContaining("Category: food"));
+      expect(editMessageText).toHaveBeenLastCalledWith(
+        123,
+        response.message_id,
+        expect.stringContaining("Category: food")
+      );
     }
   );
 
@@ -203,8 +217,19 @@ describe("expense command ingestion", () => {
     expect(await ctx.db.select().from(messages)).toHaveLength(1);
     expect(await ctx.db.select().from(expenses)).toHaveLength(1);
     expect(reply).toHaveBeenCalledTimes(2);
-    expect(reply).toHaveBeenNthCalledWith(1, expect.stringContaining("✅ Saved expense:"));
-    expect(reply).toHaveBeenNthCalledWith(2, expect.stringContaining("✅ Saved expense:"));
+    expect(editMessageText).toHaveBeenCalledTimes(2);
+    expect(editMessageText).toHaveBeenNthCalledWith(
+      1,
+      123,
+      response.message_id,
+      expect.stringContaining("✅ Saved expense:")
+    );
+    expect(editMessageText).toHaveBeenNthCalledWith(
+      2,
+      123,
+      response.message_id,
+      expect.stringContaining("✅ Saved expense:")
+    );
     expect(logError).not.toHaveBeenCalled();
   });
 
@@ -246,8 +271,13 @@ describe("expense command ingestion", () => {
       savedMessages[0].id as ReturnType<typeof crypto.randomUUID>
     );
     reply.mockClear();
+    editMessageText.mockClear();
     await bot.handleUpdate(command(undefined, 43));
-    expect(reply).toHaveBeenCalledExactlyOnceWith("❌ Failed to save expense. Please try again.");
+    expect(editMessageText).toHaveBeenCalledExactlyOnceWith(
+      123,
+      response.message_id,
+      "❌ Failed to save expense. Please try again."
+    );
     expect(logError).toHaveBeenCalledWith(
       expect.objectContaining({
         err: expect.objectContaining({
@@ -266,8 +296,13 @@ describe("expense command ingestion", () => {
     await bot.handleUpdate(command());
     await ctx.db.delete(expenses);
     reply.mockClear();
+    editMessageText.mockClear();
     await bot.handleUpdate(command());
-    expect(reply).toHaveBeenCalledExactlyOnceWith("❌ Failed to save expense. Please try again.");
+    expect(editMessageText).toHaveBeenCalledExactlyOnceWith(
+      123,
+      response.message_id,
+      "❌ Failed to save expense. Please try again."
+    );
     expect(modelResponse).toHaveBeenCalledOnce();
     expect(logError).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -303,7 +338,11 @@ describe("expense command ingestion", () => {
     });
     const { bot } = createBot();
     await bot.handleUpdate(command());
-    expect(reply).toHaveBeenCalledExactlyOnceWith("❌ Failed to save expense. Please try again.");
+    expect(editMessageText).toHaveBeenCalledExactlyOnceWith(
+      123,
+      response.message_id,
+      "❌ Failed to save expense. Please try again."
+    );
     await expectNoWrites();
   });
 
@@ -313,7 +352,11 @@ describe("expense command ingestion", () => {
     modelResponse.mockRejectedValue(error);
     const { bot, logError } = createBot();
     await bot.handleUpdate(command());
-    expect(reply).toHaveBeenCalledExactlyOnceWith("❌ Failed to save expense. Please try again.");
+    expect(editMessageText).toHaveBeenCalledExactlyOnceWith(
+      123,
+      response.message_id,
+      "❌ Failed to save expense. Please try again."
+    );
     expect(logError).toHaveBeenCalledWith(
       expect.objectContaining({ err: error }),
       "Failed to save expense"
@@ -333,7 +376,11 @@ describe("expense command ingestion", () => {
       }),
       "Failed to save expense"
     );
-    expect(reply).toHaveBeenCalledExactlyOnceWith("❌ Failed to save expense. Please try again.");
+    expect(editMessageText).toHaveBeenCalledExactlyOnceWith(
+      123,
+      response.message_id,
+      "❌ Failed to save expense. Please try again."
+    );
     await expectNoWrites();
   });
 
@@ -381,8 +428,13 @@ describe("expense command ingestion", () => {
     });
     await link(nextOwner);
     reply.mockClear();
+    editMessageText.mockClear();
     await bot.handleUpdate(command());
-    expect(reply).toHaveBeenCalledExactlyOnceWith("❌ Failed to save expense. Please try again.");
+    expect(editMessageText).toHaveBeenCalledExactlyOnceWith(
+      123,
+      response.message_id,
+      "❌ Failed to save expense. Please try again."
+    );
     expect(modelResponse).toHaveBeenCalledOnce();
     expect(await ctx.db.select().from(expenses)).toEqual(saved);
     expect(logError).toHaveBeenCalledWith(
@@ -407,23 +459,41 @@ describe("expense command ingestion", () => {
     expect(await ctx.db.select().from(messages)).toEqual(retainedMessages);
 
     reply.mockClear();
+    editMessageText.mockClear();
     await bot.handleUpdate(command());
-    expect(reply).toHaveBeenCalledExactlyOnceWith(
+    expect(editMessageText).toHaveBeenCalledExactlyOnceWith(
+      123,
+      response.message_id,
       expect.stringContaining("Link your account first")
     );
     await link();
     reply.mockClear();
+    editMessageText.mockClear();
     await bot.handleUpdate(command());
-    expect(reply).toHaveBeenCalledExactlyOnceWith(expect.stringContaining("✅ Saved expense:"));
+    expect(editMessageText).toHaveBeenCalledExactlyOnceWith(
+      123,
+      response.message_id,
+      expect.stringContaining("✅ Saved expense:")
+    );
     expect(modelResponse).toHaveBeenCalledOnce();
     expect(await ctx.db.select().from(messages)).toEqual(retainedMessages);
     expect(await ctx.db.select().from(expenses)).toEqual(savedExpenses);
   });
 
+  it("does not parse or save when sending the processing message fails", async () => {
+    await link();
+    reply.mockRejectedValueOnce(new Error("Telegram unavailable"));
+    const { bot } = createBot();
+    await expect(bot.handleUpdate(command())).rejects.toBeInstanceOf(BotError);
+    expect(modelResponse).not.toHaveBeenCalled();
+    expect(editMessageText).not.toHaveBeenCalled();
+    await expectNoWrites();
+  });
+
   it("keeps committed rows when confirmation fails and retries without reparsing", async () => {
     await link();
     const failure = new Error("Telegram unavailable");
-    reply.mockRejectedValueOnce(failure);
+    editMessageText.mockRejectedValueOnce(failure);
     const { bot, logError } = createBot();
     await expect(bot.handleUpdate(command())).rejects.toBeInstanceOf(BotError);
     const saved = await ctx.db.select().from(expenses);
@@ -432,7 +502,7 @@ describe("expense command ingestion", () => {
       expect.objectContaining({ err: failure, expenseId: saved[0].id }),
       "Expense saved but confirmation failed"
     );
-    expect(reply).toHaveBeenCalledTimes(1);
+    expect(editMessageText).toHaveBeenCalledTimes(1);
     await bot.handleUpdate(command());
     expect(modelResponse).toHaveBeenCalledOnce();
     expect(await ctx.db.select().from(expenses)).toEqual(saved);
@@ -452,7 +522,9 @@ describe("expense command ingestion", () => {
     });
     const { bot } = createBot();
     await bot.handleUpdate(command());
-    expect(reply).toHaveBeenCalledExactlyOnceWith(
+    expect(editMessageText).toHaveBeenCalledExactlyOnceWith(
+      123,
+      response.message_id,
       expect.stringContaining("Link your account first")
     );
     expect(modelResponse).not.toHaveBeenCalled();
@@ -461,7 +533,9 @@ describe("expense command ingestion", () => {
   it("rejects an unlinked sender before parsing", async () => {
     const { bot } = createBot();
     await bot.handleUpdate(command());
-    expect(reply).toHaveBeenCalledExactlyOnceWith(
+    expect(editMessageText).toHaveBeenCalledExactlyOnceWith(
+      123,
+      response.message_id,
       expect.stringContaining("Link your account first")
     );
     expect(modelResponse).not.toHaveBeenCalled();
@@ -504,9 +578,14 @@ describe("expense command ingestion", () => {
         }),
         "Failed to save expense"
       );
-      expect(reply).toHaveBeenCalledExactlyOnceWith("❌ Failed to save expense. Please try again.");
+      expect(editMessageText).toHaveBeenCalledExactlyOnceWith(
+        123,
+        response.message_id,
+        "❌ Failed to save expense. Please try again."
+      );
       expect(modelResponse).not.toHaveBeenCalled();
       reply.mockClear();
+      editMessageText.mockClear();
       await bot.handleUpdate(command("/start"));
       expect(reply).toHaveBeenCalledExactlyOnceWith("Welcome! Up and running.");
     } finally {
