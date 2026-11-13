@@ -57,22 +57,21 @@ export async function initApp({ env, db, logger, rateLimitOverrides }: InitAppPa
   const authRoutes = initAuthRoutes({
     env,
     authUseCase,
-    userService,
     authMiddleware,
     rateLimiters,
   });
+  const userRoutes = initUserRoutes(userService, authMiddleware);
+  const apiKeyRoutes = initApiKeyRoutes(apiKeyService, authMiddleware);
+  const linkedAccountRoutes = initLinkedAccountRoutes(linkedAccountService, authMiddleware);
 
   const app = initHttp(
     env,
     logger,
     [
       { prefix: "auth", app: authRoutes },
-      { prefix: "user", app: initUserRoutes(userService, authMiddleware) },
-      { prefix: "api-key", app: initApiKeyRoutes(apiKeyService, authMiddleware) },
-      {
-        prefix: "linked-account",
-        app: initLinkedAccountRoutes(linkedAccountService, authMiddleware),
-      },
+      { prefix: "users", app: userRoutes },
+      { prefix: "api-keys", app: apiKeyRoutes },
+      { prefix: "linked-accounts", app: linkedAccountRoutes },
     ],
     { defaultLimiter: rateLimiters.default }
   );

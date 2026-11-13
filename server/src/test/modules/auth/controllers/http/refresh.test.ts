@@ -76,7 +76,7 @@ describe(`POST ${API_PREFIX}/auth/refresh`, () => {
       const { data } = tokenRespSchema.parse(await response.json());
       expect(
         (
-          await app.request(`${API_PREFIX}/auth/me`, {
+          await app.request(`${API_PREFIX}/users/me`, {
             headers: { Authorization: `Bearer ${data.accessToken}` },
           })
         ).status

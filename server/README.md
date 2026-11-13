@@ -41,14 +41,14 @@ Interactive documentation is at `/api/v1/docs`, with the schema at `/api/v1/doc`
 | POST | `/api/v1/auth/change-password` | Change the password and revoke all refresh sessions. |
 | POST | `/api/v1/auth/logout-all` | Log out all devices, including the current session. |
 | POST | `/api/v1/auth/logout` | Sign out. |
-| GET | `/api/v1/auth/me` | Retrieve the current user. |
-| DELETE | `/api/v1/user/me` | Delete the current user. |
-| POST | `/api/v1/api-key` | Create a linking key. |
-| GET | `/api/v1/api-key` | List owned linking keys. |
-| PATCH | `/api/v1/api-key/{id}` | Revoke an owned linking key. |
-| DELETE | `/api/v1/api-key/{id}` | Delete an owned linking key. |
-| GET | `/api/v1/linked-account` | List owned linked accounts. |
-| DELETE | `/api/v1/linked-account/{id}` | Unlink an owned account. |
+| GET | `/api/v1/users/me` | Retrieve the current user. |
+| DELETE | `/api/v1/users/me` | Delete the current user. |
+| POST | `/api/v1/api-keys` | Create a linking key. |
+| GET | `/api/v1/api-keys` | List owned linking keys. |
+| POST | `/api/v1/api-keys/{id}/revoke` | Revoke an owned linking key. |
+| DELETE | `/api/v1/api-keys/{id}` | Delete an owned linking key. |
+| GET | `/api/v1/linked-accounts` | List owned linked accounts. |
+| DELETE | `/api/v1/linked-accounts/{id}` | Unlink an owned account. |
 
 Import the [Postman collection](../docs/expensif.postman_collection.json). Set `baseUrl`, register or log in to capture `accessToken`, and allow Postman's cookie jar to retain cookies. Refresh and logout read the CSRF cookie into their headers. Set `apiKeyId` or `linkedAccountId` for mutation requests.
 

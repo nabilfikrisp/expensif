@@ -16,8 +16,8 @@ interface RevokeApiKeyRouteDeps {
 }
 export function initRevokeApiKeyRoute(deps: RevokeApiKeyRouteDeps) {
   const revokeApiKeyRoute = createRoute({
-    method: "patch",
-    path: "/{id}",
+    method: "post",
+    path: "/{id}/revoke",
     security: [{ Bearer: [] }],
     request: { params: revokeApiKeyParamsSchema },
     middleware: [deps.authMiddleware] as const,

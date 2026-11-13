@@ -52,7 +52,7 @@ Reason: Indonesian frontend wording keeps the interface consistent with the rupi
 
 ### Why a particular fallback category
 
-Decision: Use a category named `other` as the fallback. This supersedes the earlier “uncategorized” wording; implementation gaps remain in [status](status.md#target-vs-actual).
+Decision: Use a category named `other` as the fallback. This supersedes the earlier “uncategorized” wording.
 
 Reason: The fallback category is named `other`.
 

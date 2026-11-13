@@ -25,14 +25,18 @@ beforeEach(async () => {
   await resetDb();
 });
 
-describe(`PATCH ${API_PREFIX}/api-key/{id}`, () => {
-  testBearerAuthentication(() => app, "PATCH", "/api-key/550e8400-e29b-41d4-a716-446655440000");
+describe(`POST ${API_PREFIX}/api-keys/{id}/revoke`, () => {
+  testBearerAuthentication(
+    () => app,
+    "POST",
+    "/api-keys/550e8400-e29b-41d4-a716-446655440000/revoke"
+  );
 
   it("returns 200 and revokes the key", async () => {
     const { accessToken } = await seedUser(ctx, mockUser);
     const key = await createApiKey(app, accessToken, "telegram");
-    const res = await app.request(`${API_PREFIX}/api-key/${key.id}`, {
-      method: "PATCH",
+    const res = await app.request(`${API_PREFIX}/api-keys/${key.id}/revoke`, {
+      method: "POST",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     expect(res.status).toBe(200);
@@ -41,7 +45,7 @@ describe(`PATCH ${API_PREFIX}/api-key/{id}`, () => {
     expect(response.success).toBe(true);
     expect(response.message).toBe("API key revoked");
 
-    const listed = await app.request(`${API_PREFIX}/api-key?status=all`, {
+    const listed = await app.request(`${API_PREFIX}/api-keys?status=all`, {
       method: "GET",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
@@ -52,8 +56,8 @@ describe(`PATCH ${API_PREFIX}/api-key/{id}`, () => {
     expect(listedResult.data).toHaveLength(1);
     expect(listedResult.data[0].id).toBe(key.id);
     expect(listedResult.data[0].revokedAt).not.toBeNull();
-    const repeated = await app.request(`${API_PREFIX}/api-key/${key.id}`, {
-      method: "PATCH",
+    const repeated = await app.request(`${API_PREFIX}/api-keys/${key.id}/revoke`, {
+      method: "POST",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     expect(repeated.status).toBe(400);
@@ -62,10 +66,13 @@ describe(`PATCH ${API_PREFIX}/api-key/{id}`, () => {
 
   it("returns 404 for a nonexistent key", async () => {
     const { accessToken } = await seedUser(ctx, mockUser);
-    const res = await app.request(`${API_PREFIX}/api-key/550e8400-e29b-41d4-a716-446655440000`, {
-      method: "PATCH",
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
+    const res = await app.request(
+      `${API_PREFIX}/api-keys/550e8400-e29b-41d4-a716-446655440000/revoke`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }
+    );
     expect(res.status).toBe(404);
     const respBody: unknown = await res.json();
     const response = errorRespSchema.parse(respBody);
@@ -78,8 +85,8 @@ describe(`PATCH ${API_PREFIX}/api-key/{id}`, () => {
     const { accessToken } = await seedUser(ctx, mockUser);
     const key = await createApiKey(app, accessToken, "telegram");
     const other = await seedUser(ctx, { ...mockUser, email: "other@example.com" });
-    const res = await app.request(`${API_PREFIX}/api-key/${key.id}`, {
-      method: "PATCH",
+    const res = await app.request(`${API_PREFIX}/api-keys/${key.id}/revoke`, {
+      method: "POST",
       headers: { Authorization: `Bearer ${other.accessToken}` },
     });
     expect(res.status).toBe(404);
@@ -89,7 +96,7 @@ describe(`PATCH ${API_PREFIX}/api-key/{id}`, () => {
     expect(response.message).toBe(ApiKeyError.keyNotFound().message);
     expect(response.error).toBe(ApiKeyError.keyNotFound().code);
 
-    const listed = await app.request(`${API_PREFIX}/api-key?status=all`, {
+    const listed = await app.request(`${API_PREFIX}/api-keys?status=all`, {
       method: "GET",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
@@ -105,8 +112,8 @@ describe(`PATCH ${API_PREFIX}/api-key/{id}`, () => {
 
   it("returns 400 for an invalid key ID", async () => {
     const { accessToken } = await seedUser(ctx, mockUser);
-    const res = await app.request(`${API_PREFIX}/api-key/not-a-uuid`, {
-      method: "PATCH",
+    const res = await app.request(`${API_PREFIX}/api-keys/not-a-uuid/revoke`, {
+      method: "POST",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     expect(res.status).toBe(400);

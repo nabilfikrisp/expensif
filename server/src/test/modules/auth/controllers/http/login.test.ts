@@ -41,7 +41,7 @@ describe(`POST ${API_PREFIX}/auth/login`, () => {
       throw new Error("Missing access token timestamps");
     }
     expect(payload.exp - payload.iat).toBe(15 * 60);
-    const me = await app.request(`${API_PREFIX}/auth/me`, {
+    const me = await app.request(`${API_PREFIX}/users/me`, {
       headers: { Authorization: `Bearer ${response.data.accessToken}` },
     });
     expect(me.status).toBe(200);

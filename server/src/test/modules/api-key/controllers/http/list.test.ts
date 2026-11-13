@@ -23,15 +23,15 @@ beforeEach(async () => {
   await resetDb();
 });
 
-describe(`GET ${API_PREFIX}/api-key`, () => {
-  testBearerAuthentication(() => app, "GET", "/api-key");
+describe(`GET ${API_PREFIX}/api-keys`, () => {
+  testBearerAuthentication(() => app, "GET", "/api-keys");
 
   it("documents query defaults and numeric constraints in OpenAPI", async () => {
     const res = await app.request(`${API_PREFIX}/doc`);
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({
       paths: {
-        [`${API_PREFIX}/api-key`]: {
+        [`${API_PREFIX}/api-keys`]: {
           get: {
             parameters: [
               { name: "label" },
@@ -73,7 +73,7 @@ describe(`GET ${API_PREFIX}/api-key`, () => {
 
   it("returns 200 with an empty list when the user has no keys", async () => {
     const { accessToken } = await seedUser(ctx, mockUser);
-    const res = await app.request(`${API_PREFIX}/api-key`, {
+    const res = await app.request(`${API_PREFIX}/api-keys`, {
       method: "GET",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
@@ -90,7 +90,7 @@ describe(`GET ${API_PREFIX}/api-key`, () => {
     await createApiKey(app, accessToken, "own key");
     const other = await seedUser(ctx, { ...mockUser, email: "other@example.com" });
     await createApiKey(app, other.accessToken, "other key");
-    const res = await app.request(`${API_PREFIX}/api-key`, {
+    const res = await app.request(`${API_PREFIX}/api-keys`, {
       method: "GET",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
@@ -116,7 +116,7 @@ describe(`GET ${API_PREFIX}/api-key`, () => {
     for (const label of ["telegram one", "telegram two", "another platform"]) {
       await createApiKey(app, accessToken, label);
     }
-    const res = await app.request(`${API_PREFIX}/api-key?label=telegram&page=2&limit=1`, {
+    const res = await app.request(`${API_PREFIX}/api-keys?label=telegram&page=2&limit=1`, {
       method: "GET",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
@@ -133,8 +133,8 @@ describe(`GET ${API_PREFIX}/api-key`, () => {
     const { accessToken } = await seedUser(ctx, mockUser);
     const active = await createApiKey(app, accessToken);
     const revoked = await createApiKey(app, accessToken);
-    const changed = await app.request(`${API_PREFIX}/api-key/${revoked.id}`, {
-      method: "PATCH",
+    const changed = await app.request(`${API_PREFIX}/api-keys/${revoked.id}/revoke`, {
+      method: "POST",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     expect(changed.status).toBe(200);
@@ -144,7 +144,7 @@ describe(`GET ${API_PREFIX}/api-key`, () => {
       ["?status=revoked", [revoked.id]],
       ["?status=all", [active.id, revoked.id]],
     ] as const) {
-      const response = await app.request(`${API_PREFIX}/api-key${query}`, {
+      const response = await app.request(`${API_PREFIX}/api-keys${query}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       expect(response.status, query).toBe(200);
@@ -159,7 +159,7 @@ describe(`GET ${API_PREFIX}/api-key`, () => {
 
   it("returns 400 for a non-positive page", async () => {
     const { accessToken } = await seedUser(ctx, mockUser);
-    const res = await app.request(`${API_PREFIX}/api-key?page=0`, {
+    const res = await app.request(`${API_PREFIX}/api-keys?page=0`, {
       method: "GET",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
@@ -170,7 +170,7 @@ describe(`GET ${API_PREFIX}/api-key`, () => {
 
   it("returns 400 for a limit above 100", async () => {
     const { accessToken } = await seedUser(ctx, mockUser);
-    const res = await app.request(`${API_PREFIX}/api-key?limit=101`, {
+    const res = await app.request(`${API_PREFIX}/api-keys?limit=101`, {
       method: "GET",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
@@ -181,7 +181,7 @@ describe(`GET ${API_PREFIX}/api-key`, () => {
 
   it("returns 400 for an invalid status", async () => {
     const { accessToken } = await seedUser(ctx, mockUser);
-    const res = await app.request(`${API_PREFIX}/api-key?status=invalid`, {
+    const res = await app.request(`${API_PREFIX}/api-keys?status=invalid`, {
       method: "GET",
       headers: { Authorization: `Bearer ${accessToken}` },
     });

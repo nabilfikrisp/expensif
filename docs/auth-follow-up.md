@@ -1,6 +1,6 @@
 # Authentication follow-up
 
-Remaining authentication work after backend session implementation. This document preserves deferred scope; it does not assign implementation. Current capabilities and migration readiness are recorded in [status](status.md).
+Remaining authentication work after backend session implementation. This document preserves deferred scope; it does not assign implementation. Current capabilities and verification limits are recorded in [status](status.md).
 
 ## Frontend and browser verification
 

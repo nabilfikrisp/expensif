@@ -19,7 +19,7 @@ export async function createLinkedUser(context: TestContext, name: string) {
     platformUserId: name,
     idempotencyKey: `test:link:${name}`,
   });
-  const res = await context.app.request(`${API_PREFIX}/linked-account`, { headers });
+  const res = await context.app.request(`${API_PREFIX}/linked-accounts`, { headers });
   if (res.status !== 200) {
     throw new Error(`Linked-account listing failed: ${res.status}`);
   }
@@ -31,7 +31,7 @@ export async function createLinkedUser(context: TestContext, name: string) {
 }
 
 export async function createApiKey(app: OpenAPIHono, accessToken: string, label?: string) {
-  const response = await app.request(`${API_PREFIX}/api-key`, {
+  const response = await app.request(`${API_PREFIX}/api-keys`, {
     method: "POST",
     headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
     body: JSON.stringify({ label }),

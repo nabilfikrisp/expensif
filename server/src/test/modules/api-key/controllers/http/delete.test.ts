@@ -25,13 +25,13 @@ beforeEach(async () => {
   await resetDb();
 });
 
-describe(`DELETE ${API_PREFIX}/api-key/{id}`, () => {
-  testBearerAuthentication(() => app, "DELETE", "/api-key/550e8400-e29b-41d4-a716-446655440000");
+describe(`DELETE ${API_PREFIX}/api-keys/{id}`, () => {
+  testBearerAuthentication(() => app, "DELETE", "/api-keys/550e8400-e29b-41d4-a716-446655440000");
 
   it("returns 200 and deletes the key", async () => {
     const { accessToken } = await seedUser(ctx, mockUser);
     const key = await createApiKey(app, accessToken, "telegram");
-    const res = await app.request(`${API_PREFIX}/api-key/${key.id}`, {
+    const res = await app.request(`${API_PREFIX}/api-keys/${key.id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
@@ -41,7 +41,7 @@ describe(`DELETE ${API_PREFIX}/api-key/{id}`, () => {
     expect(response.success).toBe(true);
     expect(response.message).toBe("API key deleted");
 
-    const listed = await app.request(`${API_PREFIX}/api-key?status=all`, {
+    const listed = await app.request(`${API_PREFIX}/api-keys?status=all`, {
       method: "GET",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
@@ -50,7 +50,7 @@ describe(`DELETE ${API_PREFIX}/api-key/{id}`, () => {
     const listedResult = listApiKeysRespSchema.parse(listedBody);
 
     expect(listedResult.data).toEqual([]);
-    const repeated = await app.request(`${API_PREFIX}/api-key/${key.id}`, {
+    const repeated = await app.request(`${API_PREFIX}/api-keys/${key.id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
@@ -60,7 +60,7 @@ describe(`DELETE ${API_PREFIX}/api-key/{id}`, () => {
 
   it("returns 404 for a nonexistent key", async () => {
     const { accessToken } = await seedUser(ctx, mockUser);
-    const res = await app.request(`${API_PREFIX}/api-key/550e8400-e29b-41d4-a716-446655440000`, {
+    const res = await app.request(`${API_PREFIX}/api-keys/550e8400-e29b-41d4-a716-446655440000`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
@@ -76,7 +76,7 @@ describe(`DELETE ${API_PREFIX}/api-key/{id}`, () => {
     const { accessToken } = await seedUser(ctx, mockUser);
     const key = await createApiKey(app, accessToken, "telegram");
     const other = await seedUser(ctx, { ...mockUser, email: "other@example.com" });
-    const res = await app.request(`${API_PREFIX}/api-key/${key.id}`, {
+    const res = await app.request(`${API_PREFIX}/api-keys/${key.id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${other.accessToken}` },
     });
@@ -87,7 +87,7 @@ describe(`DELETE ${API_PREFIX}/api-key/{id}`, () => {
     expect(response.message).toBe(ApiKeyError.keyNotFound().message);
     expect(response.error).toBe(ApiKeyError.keyNotFound().code);
 
-    const listed = await app.request(`${API_PREFIX}/api-key?status=all`, {
+    const listed = await app.request(`${API_PREFIX}/api-keys?status=all`, {
       method: "GET",
       headers: { Authorization: `Bearer ${accessToken}` },
     });
@@ -103,7 +103,7 @@ describe(`DELETE ${API_PREFIX}/api-key/{id}`, () => {
 
   it("returns 400 for an invalid key ID", async () => {
     const { accessToken } = await seedUser(ctx, mockUser);
-    const res = await app.request(`${API_PREFIX}/api-key/not-a-uuid`, {
+    const res = await app.request(`${API_PREFIX}/api-keys/not-a-uuid`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${accessToken}` },
     });

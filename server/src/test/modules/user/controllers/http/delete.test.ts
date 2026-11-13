@@ -2,8 +2,8 @@ import type { OpenAPIHono } from "@hono/zod-openapi";
 import { eq } from "drizzle-orm";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { meRespSchema } from "@/modules/auth/controllers/http/me";
 import { listLinkedAccountsRespSchema } from "@/modules/linked-account/controllers/http/list";
+import { meRespSchema } from "@/modules/user/controllers/http/me";
 import { UserError } from "@/modules/user/error";
 import { sessions, users } from "@/pkg/db/schema";
 import { API_PREFIX } from "@/pkg/http";
@@ -26,7 +26,7 @@ beforeEach(async () => {
   await resetDb();
 });
 
-describe(`DELETE ${API_PREFIX}/user/me`, () => {
+describe(`DELETE ${API_PREFIX}/users/me`, () => {
   it("deletes only the token owner despite another user ID in the request", async () => {
     const owner = await registerAndGetToken(app, {
       email: "owner@example.com",
@@ -39,14 +39,14 @@ describe(`DELETE ${API_PREFIX}/user/me`, () => {
       name: "Other",
     });
     const otherHeaders = { Authorization: `Bearer ${other.accessToken}` };
-    const otherMe = await app.request(`${API_PREFIX}/auth/me`, { headers: otherHeaders });
+    const otherMe = await app.request(`${API_PREFIX}/users/me`, { headers: otherHeaders });
     expect(otherMe.status).toBe(200);
     const {
       data: { user },
     } = meRespSchema.parse(await otherMe.json());
     const ownerHeaders = { Authorization: `Bearer ${owner.accessToken}` };
 
-    const deleted = await app.request(`${API_PREFIX}/user/me?userId=${user.id}`, {
+    const deleted = await app.request(`${API_PREFIX}/users/me?userId=${user.id}`, {
       method: "DELETE",
       headers: { ...ownerHeaders, "Content-Type": "application/json" },
       body: JSON.stringify({ userId: user.id }),
@@ -54,7 +54,7 @@ describe(`DELETE ${API_PREFIX}/user/me`, () => {
     expect(deleted.status).toBe(200);
     expect(await deleted.json()).toEqual({ success: true, message: "User deleted" });
 
-    const ownerMe = await app.request(`${API_PREFIX}/auth/me`, { headers: ownerHeaders });
+    const ownerMe = await app.request(`${API_PREFIX}/users/me`, { headers: ownerHeaders });
     expect(ownerMe.status).toBe(404);
     expect(await ownerMe.json()).toMatchObject({ error: "USER_NOT_FOUND" });
     const remainingUsers = await ctx.db.select().from(users);
@@ -71,11 +71,11 @@ describe(`DELETE ${API_PREFIX}/user/me`, () => {
         })
       ).status
     ).toBe(401);
-    const surviving = await app.request(`${API_PREFIX}/auth/me`, { headers: otherHeaders });
+    const surviving = await app.request(`${API_PREFIX}/users/me`, { headers: otherHeaders });
     expect(surviving.status).toBe(200);
     expect(meRespSchema.parse(await surviving.json()).data.user.id).toBe(user.id);
 
-    const repeated = await app.request(`${API_PREFIX}/user/me`, {
+    const repeated = await app.request(`${API_PREFIX}/users/me`, {
       method: "DELETE",
       headers: ownerHeaders,
     });
@@ -90,16 +90,16 @@ describe(`DELETE ${API_PREFIX}/user/me`, () => {
   it("deleting a user cascades only their linked accounts", async () => {
     const owner = await createLinkedUser(ctx, "owner");
     const other = await createLinkedUser(ctx, "other");
-    const deleted = await app.request(`${API_PREFIX}/user/me`, {
+    const deleted = await app.request(`${API_PREFIX}/users/me`, {
       method: "DELETE",
       headers: owner.headers,
     });
     expect(deleted.status).toBe(200);
-    const removed = await app.request(`${API_PREFIX}/linked-account`, {
+    const removed = await app.request(`${API_PREFIX}/linked-accounts`, {
       headers: owner.headers,
     });
     expect(listLinkedAccountsRespSchema.parse(await removed.json()).data).toEqual([]);
-    const surviving = await app.request(`${API_PREFIX}/linked-account`, {
+    const surviving = await app.request(`${API_PREFIX}/linked-accounts`, {
       headers: other.headers,
     });
     expect(listLinkedAccountsRespSchema.parse(await surviving.json()).data).toEqual([
@@ -110,7 +110,7 @@ describe(`DELETE ${API_PREFIX}/user/me`, () => {
   it.each([undefined, "Bearer invalid-token"])(
     "rejects unauthorized deletion (%s)",
     async (authorization) => {
-      const res = await app.request(`${API_PREFIX}/user/me`, {
+      const res = await app.request(`${API_PREFIX}/users/me`, {
         method: "DELETE",
         headers: authorization ? { Authorization: authorization } : {},
       });

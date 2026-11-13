@@ -5,13 +5,11 @@ import { initCsrfRoute } from "./csrf";
 import { initLoginRoute } from "./login";
 import { initLogoutRoute } from "./logout";
 import { initLogoutAllRoute } from "./logout-all";
-import { initMeRoute } from "./me";
 import { initRefreshRoute } from "./refresh";
 import { initRegisterRoute } from "./register";
 
 import type { AuthMiddleware } from "@/modules/auth/controllers/middleware";
 import type { AuthUseCase } from "@/modules/auth/use-case/interface";
-import type { UserService } from "@/modules/user/service/interface";
 import { initCookieJar } from "@/pkg/cookies";
 import type { EnvSchema } from "@/pkg/env";
 import { handleDomainError } from "@/shared/handle-domain-error";
@@ -20,14 +18,12 @@ import type { RateLimiters } from "@/shared/rate-limit";
 export interface InitAuthRoutesDeps {
   env: EnvSchema;
   authUseCase: AuthUseCase;
-  userService: UserService;
   authMiddleware: AuthMiddleware;
   rateLimiters: RateLimiters;
 }
 export function initAuthRoutes({
   env,
   authUseCase,
-  userService,
   authMiddleware,
   rateLimiters,
 }: InitAuthRoutesDeps) {
@@ -60,9 +56,6 @@ export function initAuthRoutes({
 
   const logoutRoute = initLogoutRoute(authUseCase, cookieJar);
   app.route("/", logoutRoute);
-
-  const meRoute = initMeRoute({ userService, authMiddleware });
-  app.route("/", meRoute);
 
   app.onError(handleDomainError);
 

@@ -143,7 +143,7 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/api/v1/auth/me"
+            "url": "{{baseUrl}}/api/v1/users/me"
           },
           "response": []
         },
@@ -191,7 +191,7 @@
                 "value": "application/json"
               }
             ],
-            "url": "{{baseUrl}}/api/v1/api-key",
+            "url": "{{baseUrl}}/api/v1/api-keys",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"label\": \"telegram link\"\n}",
@@ -209,16 +209,16 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/api/v1/api-key?status=all&page=1&limit=10"
+            "url": "{{baseUrl}}/api/v1/api-keys?status=all&page=1&limit=10"
           },
           "response": []
         },
         {
           "name": "Revoke key",
           "request": {
-            "method": "PATCH",
+            "method": "POST",
             "header": [],
-            "url": "{{baseUrl}}/api/v1/api-key/{{apiKeyId}}"
+            "url": "{{baseUrl}}/api/v1/api-keys/{{apiKeyId}}/revoke"
           },
           "response": []
         },
@@ -227,7 +227,7 @@
           "request": {
             "method": "DELETE",
             "header": [],
-            "url": "{{baseUrl}}/api/v1/api-key/{{apiKeyId}}"
+            "url": "{{baseUrl}}/api/v1/api-keys/{{apiKeyId}}"
           },
           "response": []
         }
@@ -241,7 +241,7 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/api/v1/linked-account"
+            "url": "{{baseUrl}}/api/v1/linked-accounts"
           },
           "response": []
         },
@@ -250,7 +250,7 @@
           "request": {
             "method": "DELETE",
             "header": [],
-            "url": "{{baseUrl}}/api/v1/linked-account/{{linkedAccountId}}"
+            "url": "{{baseUrl}}/api/v1/linked-accounts/{{linkedAccountId}}"
           },
           "response": []
         }

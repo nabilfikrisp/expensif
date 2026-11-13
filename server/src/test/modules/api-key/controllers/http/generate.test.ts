@@ -22,12 +22,12 @@ beforeEach(async () => {
   await resetDb();
 });
 
-describe(`POST ${API_PREFIX}/api-key`, () => {
-  testBearerAuthentication(() => app, "POST", "/api-key");
+describe(`POST ${API_PREFIX}/api-keys`, () => {
+  testBearerAuthentication(() => app, "POST", "/api-keys");
 
   it("returns 201 with a labeled API key", async () => {
     const { accessToken } = await registerAndGetToken(app, mockUser);
-    const res = await app.request(`${API_PREFIX}/api-key`, {
+    const res = await app.request(`${API_PREFIX}/api-keys`, {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
       body: JSON.stringify({ label: "telegram link" }),
@@ -51,7 +51,7 @@ describe(`POST ${API_PREFIX}/api-key`, () => {
 
   it("returns 201 without an optional label", async () => {
     const { accessToken } = await seedUser(ctx, mockUser);
-    const res = await app.request(`${API_PREFIX}/api-key`, {
+    const res = await app.request(`${API_PREFIX}/api-keys`, {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
       body: JSON.stringify({}),
@@ -66,7 +66,7 @@ describe(`POST ${API_PREFIX}/api-key`, () => {
 
   it("returns 400 for a non-string label", async () => {
     const { accessToken } = await seedUser(ctx, mockUser);
-    const res = await app.request(`${API_PREFIX}/api-key`, {
+    const res = await app.request(`${API_PREFIX}/api-keys`, {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
       body: JSON.stringify({ label: 123 }),

@@ -31,7 +31,7 @@ afterEach(() => vi.restoreAllMocks());
 
 const issueKey = () => createApiKey(ctx.app, tokens.accessToken, "telegram");
 async function listAccounts() {
-  const response = await ctx.app.request(`${API_PREFIX}/linked-account`, {
+  const response = await ctx.app.request(`${API_PREFIX}/linked-accounts`, {
     headers: { Authorization: `Bearer ${tokens.accessToken}` },
   });
   expect(response.status).toBe(200);
@@ -57,7 +57,7 @@ describe("Telegram account linking", () => {
     expect((await keyRow(id)).lastUsedAt).not.toBeNull();
     const [stored] = await ctx.db.select().from(linkedAccounts);
     expect(stored.idempotencyKey).toBe("telegram:link:123:123");
-    const publicResponse = await ctx.app.request(`${API_PREFIX}/linked-account`, {
+    const publicResponse = await ctx.app.request(`${API_PREFIX}/linked-accounts`, {
       headers: { Authorization: `Bearer ${tokens.accessToken}` },
     });
     expect(await publicResponse.json()).toEqual({
@@ -81,8 +81,8 @@ describe("Telegram account linking", () => {
       const { id, key } = await issueKey();
       const bot = initTestBot(ctx);
       if (state === "revoked") {
-        const response = await ctx.app.request(`${API_PREFIX}/api-key/${id}`, {
-          method: "PATCH",
+        const response = await ctx.app.request(`${API_PREFIX}/api-keys/${id}/revoke`, {
+          method: "POST",
           headers: { Authorization: `Bearer ${tokens.accessToken}` },
         });
         expect(response.status).toBe(200);
@@ -120,10 +120,13 @@ describe("Telegram account linking", () => {
           .where(eq(apiKeys.id, id));
       }
       if (state === "revoked" || state === "deleted") {
-        const response = await ctx.app.request(`${API_PREFIX}/api-key/${id}`, {
-          method: state === "revoked" ? "PATCH" : "DELETE",
-          headers: { Authorization: `Bearer ${tokens.accessToken}` },
-        });
+        const response = await ctx.app.request(
+          `${API_PREFIX}/api-keys/${id}${state === "revoked" ? "/revoke" : ""}`,
+          {
+            method: state === "revoked" ? "POST" : "DELETE",
+            headers: { Authorization: `Bearer ${tokens.accessToken}` },
+          }
+        );
         expect(response.status).toBe(200);
       }
       const linksBefore = await ctx.db.select().from(linkedAccounts);
@@ -202,7 +205,7 @@ describe("Telegram account linking", () => {
       const command = botCommand(`/link ${key}`);
       await bot.handleUpdate(command);
       const [account] = await listAccounts();
-      const response = await ctx.app.request(`${API_PREFIX}/linked-account/${account.id}`, {
+      const response = await ctx.app.request(`${API_PREFIX}/linked-accounts/${account.id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${tokens.accessToken}` },
       });
@@ -309,8 +312,8 @@ describe("Telegram account linking", () => {
     await initTestBot(ctx).handleUpdate(botCommand(`/link ${key}`));
     const before = await listAccounts();
     expect(before).toHaveLength(1);
-    const revoked = await ctx.app.request(`${API_PREFIX}/api-key/${id}`, {
-      method: "PATCH",
+    const revoked = await ctx.app.request(`${API_PREFIX}/api-keys/${id}/revoke`, {
+      method: "POST",
       headers: { Authorization: `Bearer ${tokens.accessToken}` },
     });
     expect(revoked.status).toBe(200);

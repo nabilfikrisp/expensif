@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { meRespSchema } from "@/modules/auth/controllers/http/me";
 import { listLinkedAccountsRespSchema } from "@/modules/linked-account/controllers/http/list";
+import { meRespSchema } from "@/modules/user/controllers/http/me";
 import { API_PREFIX } from "@/pkg/http";
 import { initTest } from "@/test/helper/app";
 import { createLinkedUser } from "@/test/helper/linked-account";
@@ -17,17 +17,17 @@ beforeEach(async () => {
   await ctx.resetDb();
 });
 
-describe(`GET ${API_PREFIX}/linked-account`, () => {
+describe(`GET ${API_PREFIX}/linked-accounts`, () => {
   it("lists only the token owner's accounts despite a supplied userId", async () => {
     const owner = await createLinkedUser(ctx, "owner");
     const other = await createLinkedUser(ctx, "other");
-    const me = await ctx.app.request(`${API_PREFIX}/auth/me`, { headers: other.headers });
+    const me = await ctx.app.request(`${API_PREFIX}/users/me`, { headers: other.headers });
     expect(me.status).toBe(200);
     const {
       data: { user },
     } = meRespSchema.parse(await me.json());
 
-    const res = await ctx.app.request(`${API_PREFIX}/linked-account?userId=${user.id}`, {
+    const res = await ctx.app.request(`${API_PREFIX}/linked-accounts?userId=${user.id}`, {
       headers: owner.headers,
     });
     expect(res.status).toBe(200);
@@ -45,12 +45,12 @@ describe(`GET ${API_PREFIX}/linked-account`, () => {
     async (authorization) => {
       const owner = await createLinkedUser(ctx, "owner");
       const headers: Record<string, string> = authorization ? { Authorization: authorization } : {};
-      const res = await ctx.app.request(`${API_PREFIX}/linked-account`, {
+      const res = await ctx.app.request(`${API_PREFIX}/linked-accounts`, {
         method: "GET",
         headers,
       });
       expect(res.status).toBe(401);
-      const unchanged = await ctx.app.request(`${API_PREFIX}/linked-account`, {
+      const unchanged = await ctx.app.request(`${API_PREFIX}/linked-accounts`, {
         headers: owner.headers,
       });
       expect(listLinkedAccountsRespSchema.parse(await unchanged.json()).data).toEqual([

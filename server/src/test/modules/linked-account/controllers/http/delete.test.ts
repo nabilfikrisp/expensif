@@ -17,15 +17,15 @@ beforeEach(async () => {
   await ctx.resetDb();
 });
 
-describe(`DELETE ${API_PREFIX}/linked-account/{id}`, () => {
+describe(`DELETE ${API_PREFIX}/linked-accounts/{id}`, () => {
   it("rejects an invalid account ID without deleting accounts", async () => {
     const owner = await createLinkedUser(ctx, "owner");
-    const res = await ctx.app.request(`${API_PREFIX}/linked-account/not-a-uuid`, {
+    const res = await ctx.app.request(`${API_PREFIX}/linked-accounts/not-a-uuid`, {
       method: "DELETE",
       headers: owner.headers,
     });
     expect(res.status).toBe(400);
-    const unchanged = await ctx.app.request(`${API_PREFIX}/linked-account`, {
+    const unchanged = await ctx.app.request(`${API_PREFIX}/linked-accounts`, {
       headers: owner.headers,
     });
     expect(listLinkedAccountsRespSchema.parse(await unchanged.json()).data).toEqual([
@@ -36,7 +36,7 @@ describe(`DELETE ${API_PREFIX}/linked-account/{id}`, () => {
   it("rejects cross-user deletion and leaves the owner's account unchanged", async () => {
     const owner = await createLinkedUser(ctx, "owner");
     const other = await createLinkedUser(ctx, "other");
-    const denied = await ctx.app.request(`${API_PREFIX}/linked-account/${owner.account.id}`, {
+    const denied = await ctx.app.request(`${API_PREFIX}/linked-accounts/${owner.account.id}`, {
       method: "DELETE",
       headers: other.headers,
     });
@@ -46,23 +46,23 @@ describe(`DELETE ${API_PREFIX}/linked-account/{id}`, () => {
       message: LinkedAccountError.accountNotFound().message,
       error: LinkedAccountError.accountNotFound().code,
     });
-    const unchanged = await ctx.app.request(`${API_PREFIX}/linked-account`, {
+    const unchanged = await ctx.app.request(`${API_PREFIX}/linked-accounts`, {
       headers: owner.headers,
     });
     expect(listLinkedAccountsRespSchema.parse(await unchanged.json()).data).toEqual([
       owner.account,
     ]);
 
-    const deleted = await ctx.app.request(`${API_PREFIX}/linked-account/${owner.account.id}`, {
+    const deleted = await ctx.app.request(`${API_PREFIX}/linked-accounts/${owner.account.id}`, {
       method: "DELETE",
       headers: owner.headers,
     });
     expect(deleted.status).toBe(200);
-    const remaining = await ctx.app.request(`${API_PREFIX}/linked-account`, {
+    const remaining = await ctx.app.request(`${API_PREFIX}/linked-accounts`, {
       headers: owner.headers,
     });
     expect(listLinkedAccountsRespSchema.parse(await remaining.json()).data).toEqual([]);
-    const otherRemaining = await ctx.app.request(`${API_PREFIX}/linked-account`, {
+    const otherRemaining = await ctx.app.request(`${API_PREFIX}/linked-accounts`, {
       headers: other.headers,
     });
     expect(listLinkedAccountsRespSchema.parse(await otherRemaining.json()).data).toEqual([
@@ -75,12 +75,12 @@ describe(`DELETE ${API_PREFIX}/linked-account/{id}`, () => {
     async (authorization) => {
       const owner = await createLinkedUser(ctx, "owner");
       const headers: Record<string, string> = authorization ? { Authorization: authorization } : {};
-      const res = await ctx.app.request(`${API_PREFIX}/linked-account/${owner.account.id}`, {
+      const res = await ctx.app.request(`${API_PREFIX}/linked-accounts/${owner.account.id}`, {
         method: "DELETE",
         headers,
       });
       expect(res.status).toBe(401);
-      const unchanged = await ctx.app.request(`${API_PREFIX}/linked-account`, {
+      const unchanged = await ctx.app.request(`${API_PREFIX}/linked-accounts`, {
         headers: owner.headers,
       });
       expect(listLinkedAccountsRespSchema.parse(await unchanged.json()).data).toEqual([

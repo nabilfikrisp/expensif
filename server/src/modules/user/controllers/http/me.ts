@@ -1,7 +1,7 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 
 import type { AuthMiddleware } from "@/modules/auth/controllers/middleware";
-import { userRespSchema } from "@/modules/auth/controllers/zod-schema";
+import { userRespSchema } from "@/modules/user/controllers/zod-schema";
 import type { UserService } from "@/modules/user/service/interface";
 import { errorRespSchema, successRespSchema } from "@/shared/response.schema";
 
@@ -38,6 +38,11 @@ export function initMeRoute(deps: MeRouteDeps) {
   });
 
   const app = new OpenAPIHono();
+
+  app.get("/me", async (c, next) => {
+    c.header("Cache-Control", "no-store");
+    await next();
+  });
 
   app.openapi(meRoute, async (c) => {
     const userId = c.get("userId");
