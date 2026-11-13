@@ -2,7 +2,7 @@
 
 Problem: Module service factories define multiple operation implementations in one file. Organize each public service method in its own file while preserving the existing service API and architecture.
 
-Evidence: The [API-key](../../server/src/modules/api-key/service.ts), [auth](../../server/src/modules/auth/service.ts), [session](../../server/src/modules/session/service.ts), [linked-account](../../server/src/modules/linked-account/service.ts), and [user](../../server/src/modules/user/service.ts) factories contain multiple method implementations. The [expense service](../../server/src/modules/expense/service.ts) currently exposes one method.
+Evidence: The [API-key](../../server/src/modules/api-key/service.ts), [auth](../../server/src/modules/auth/service.ts), [session](../../server/src/modules/session/service.ts), [linked-account](../../server/src/modules/linked-account/service.ts), and [user](../../server/src/modules/user/service.ts) factories contain multiple method implementations. The [expense service](../../server/src/modules/expense/service.ts) also contains multiple operation implementations.
 
 Done when:
 

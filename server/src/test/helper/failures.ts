@@ -22,7 +22,7 @@ export async function withSessionWritesBlocked(
   });
   try {
     await assertTestDatabase(client);
-    const { app } = initApp({
+    const { app } = await initApp({
       env: context.env,
       db: drizzle({ client, relations }),
       logger: initLogger(context.env),

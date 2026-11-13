@@ -31,7 +31,7 @@ Categories are global. The fallback follows the [product decision](product-inten
 
 Preserve the original message text. Initial ingestion saves one expense per message; multiple expenses remain future scope. Platform controllers supply an opaque idempotency key independently of source metadata and the linked-account reference. Duplicate deliveries must not create additional expenses, including after unlinking or relinking. Deleting a message preserves its expenses.
 
-Initial ingestion retains only successfully parsed messages; failed parsing leaves nothing saved. Allowed parsing-state values remain undefined.
+Initial ingestion retains only successfully parsed messages with `parseStatus: "parsed"`; failed parsing leaves nothing saved. Other parsing-state values remain undefined.
 
 ## expenses
 

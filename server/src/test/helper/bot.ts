@@ -2,19 +2,21 @@ import { MockLanguageModelV4 } from "ai/test";
 import type { Update } from "grammy/types";
 import type { TestContext } from "./app";
 import { initBotApp } from "@/app";
+import type { Llm } from "@/pkg/llm";
 import type { Logger } from "@/pkg/logger";
 import { initLogger } from "@/pkg/logger";
 
 export function initTestBot(
   context: TestContext,
   db = context.db,
-  logger: Logger = initLogger(context.env)
+  logger: Logger = initLogger(context.env),
+  llm: Llm = { model: new MockLanguageModelV4() }
 ) {
   const bot = initBotApp({
     env: context.env,
     db,
     logger,
-    llm: { model: new MockLanguageModelV4() },
+    llm,
     linkedAccountUseCase: context.useCases.linkedAccount,
   });
   bot.botInfo = {

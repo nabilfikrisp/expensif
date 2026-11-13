@@ -33,14 +33,6 @@ Changes to these rules require a maintainer decision.
 
     Reason: Catch behavioral regressions while keeping the test suite small and maintainable. Internal refactoring should not require test changes when observable behavior stays the same.
 
-## Known exceptions
-
-These existing exceptions are not patterns to copy or authorization to fix code outside an assigned task.
-
-| Exception                                                                                                   | Evidence                                                                               |
-| ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| The expense service receives `db` without using it. Retain this dependency for now, by maintainer decision. | `initExpenseService` in [expense/service.ts](../server/src/modules/expense/service.ts) |
-
 ## Rationale
 
 > **Maintainer-only:** Agents must not rewrite or complete these reasons. Unresolved reasons are marked `TODO(maintainer)`.

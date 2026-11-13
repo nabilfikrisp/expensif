@@ -56,11 +56,12 @@ Import the [Postman collection](../docs/expensif.postman_collection.json). Set `
 
 - `/start`: show the welcome message.
 - `/link <key>`: link a Telegram account.
-- `/expense <description>`: parse an expense description; requires a linked account.
+- `/expense <description>`: save an expense description or return its saved result on retry; requires a linked account.
 
 ## Structure and commands
 
 ```sh
+pnpm db:seed:categories
 pnpm dev
 pnpm build
 pnpm start
@@ -68,4 +69,4 @@ pnpm lintformat
 pnpm test:run
 ```
 
-`dev` enables grammY debug output. `start` runs the built server; apply migrations separately first. `test:run` and `test` manage the dedicated test database automatically; [test setup](../README.md#checks-and-tests) covers requirements and recovery.
+Before starting with `dev` or `start`, apply committed migrations. Startup seeds the seven categories against the configured `DATABASE_URL` and fails if seeding fails. For manual setup, `pnpm db:seed:categories` remains available and is safe to repeat. `dev` enables grammY debug output. `start` runs the built server. `test:run` and `test` manage the dedicated test database automatically; [test setup](../README.md#checks-and-tests) covers requirements and recovery.

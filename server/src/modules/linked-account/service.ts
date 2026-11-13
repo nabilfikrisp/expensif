@@ -79,6 +79,29 @@ export function initLinkedAccountService(db: Db) {
       return row;
     },
 
+    async getLinkedAccountForIngestion(platform: string, platformUserId: string, tx: Tx) {
+      // Keep this owner linked until the ingestion or completed-result transaction finishes.
+      const account = (
+        await tx
+          .select()
+          .from(linkedAccounts)
+          .where(
+            and(
+              eq(linkedAccounts.platform, platform),
+              eq(linkedAccounts.platformUserId, platformUserId)
+            )
+          )
+          .limit(1)
+          .for("share")
+      ).at(0);
+
+      if (!account) {
+        throw LinkedAccountError.accountNotFound();
+      }
+
+      return account;
+    },
+
     async getUserByLinkedAccount(platform: string, platformUserId: string) {
       const row = (
         await db

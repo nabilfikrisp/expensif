@@ -1,50 +1,83 @@
-import type { Bot, MiddlewareFn } from "grammy";
-import type { ExpensesService } from "@/modules/expense/service";
+import type { Bot } from "grammy";
+
+import { ingestExpenseReqSchema, ingestExpenseRespSchema } from "./zod-schema";
+import type { IngestExpenseResp } from "./zod-schema";
+import type { ExpenseUseCase } from "@/modules/expense/use-case";
+import { LinkedAccountError } from "@/modules/linked-account/error";
 import type { Logger } from "@/pkg/logger";
 
 export function registerExpenseCommands({
   bot,
   logger,
-  expenseService,
-  middleware = [],
+  expenseUseCase,
 }: {
   bot: Bot;
   logger: Logger;
-  expenseService: ExpensesService;
-  middleware?: MiddlewareFn[];
+  expenseUseCase: ExpenseUseCase;
 }) {
-  bot.command("expense", ...middleware, async (ctx) => {
-    const text = ctx.match;
-    if (!text) {
+  bot.command("expense", async (ctx) => {
+    if (!ctx.from) {
+      await ctx.reply("Cannot identify your Telegram account.");
+      return;
+    }
+    if (!ctx.match) {
       await ctx.reply("Usage: /expense <description>\nExample: /expense bakso 15k kemarin");
       return;
     }
 
-    const sent = await ctx.reply("⏳ Processing...");
-
+    let result: IngestExpenseResp;
     try {
-      const result = await expenseService.parseExpense(text);
-      await ctx.api.editMessageText(
-        ctx.chat.id,
-        sent.message_id,
+      const request = ingestExpenseReqSchema.parse({
+        platform: "telegram",
+        platformUserId: ctx.from.id.toString(),
+        rawText: ctx.msg.text,
+        parsingInput: ctx.match,
+        externalConversationId: ctx.chat.id.toString(),
+        externalMessageId: ctx.msg.message_id.toString(),
+        idempotencyKey: `telegram:expense:${ctx.chat.id}:${ctx.msg.message_id}`,
+      });
+      result = await expenseUseCase.ingestExpense(request);
+    } catch (error) {
+      if (LinkedAccountError.isAccountNotFound(error)) {
+        await ctx.reply(
+          "Link your account first using /link <api-key> in a private chat with the bot."
+        );
+        return;
+      }
+      logger.error(
+        {
+          err: error,
+          updateId: ctx.update.update_id,
+          chatId: ctx.chat.id,
+          messageId: ctx.msg.message_id,
+        },
+        "Failed to save expense"
+      );
+      await ctx.reply("❌ Failed to save expense. Please try again.");
+      return;
+    }
+
+    // Saving has committed. A reply failure must not become a save-failure response.
+    try {
+      const { expense } = ingestExpenseRespSchema.parse(result);
+      await ctx.reply(
         [
-          "✅ Parsed expense:",
-          `Item: ${result.item_name}`,
-          `Amount: Rp ${Intl.NumberFormat("id-ID").format(BigInt(result.amount))}`,
-          `Date: ${result.date}`,
-          `Category: ${result.category}`,
-          result.note ? `Note: ${result.note}` : null,
+          "✅ Saved expense:",
+          `Item: ${expense.itemName}`,
+          `Amount: Rp ${Intl.NumberFormat("id-ID").format(BigInt(expense.amount))}`,
+          `Date: ${expense.expenseDate}`,
+          expense.categorySlug ? `Category: ${expense.categorySlug}` : null,
+          expense.note ? `Note: ${expense.note}` : null,
         ]
           .filter(Boolean)
           .join("\n")
       );
     } catch (error) {
-      logger.error({ input: text, err: error }, "Failed to parse expense");
-      await ctx.api.editMessageText(
-        ctx.chat.id,
-        sent.message_id,
-        `❌ Failed to parse: ${error instanceof Error ? error.message : "Unknown error"}`
+      logger.error(
+        { err: error, updateId: ctx.update.update_id, expenseId: result.expense.id },
+        "Expense saved but confirmation failed"
       );
+      throw error;
     }
   });
 }

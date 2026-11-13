@@ -9,7 +9,7 @@ export async function initTest() {
   const database = await initTestDb();
   try {
     const env = createTestEnv();
-    const application = initApp({
+    const application = await initApp({
       env,
       db: database.db,
       logger: initLogger(env),

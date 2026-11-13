@@ -2,7 +2,7 @@
 
 Problem: User-facing backend messages include English wording. API messages, validation messages, and Telegram replies need consistent Bahasa Indonesia wording.
 
-Evidence: English messages appear in [authentication responses](../../server/src/modules/auth/controllers/http/change-password.ts), [API-key responses](../../server/src/modules/api-key/controllers/http/generate.ts), [HTTP boundary responses](../../server/src/pkg/http/index.ts), [rate-limit responses](../../server/src/pkg/http/rate-limit.ts), [Telegram account checks](../../server/src/modules/linked-account/controllers/bot-middleware.ts), [expense replies](../../server/src/modules/expense/controllers/bot.ts), and [bot registration](../../server/src/app.ts).
+Evidence: English messages appear in [authentication responses](../../server/src/modules/auth/controllers/http/change-password.ts), [API-key responses](../../server/src/modules/api-key/controllers/http/generate.ts), [HTTP boundary responses](../../server/src/pkg/http/index.ts), [rate-limit responses](../../server/src/pkg/http/rate-limit.ts), [Telegram expense replies and account checks](../../server/src/modules/expense/controllers/bot.ts), and [bot registration](../../server/src/app.ts).
 
 Done when:
 

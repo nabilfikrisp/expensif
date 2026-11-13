@@ -2,9 +2,12 @@ import { generateText, Output } from "ai";
 import { z } from "zod";
 import type { Llm } from "@/pkg/llm";
 
-// different than db schema
+// Model output is separate from database and use-case DTOs.
 const expenseParseSchema = z.object({
-  item_name: z.string().describe("The name of the item (e.g. pizza, bubur ayam, indomie)"),
+  item_name: z
+    .string()
+    .min(1)
+    .describe("The item or combined description when several items share one total"),
   amount: z
     .string()
     .regex(/^[1-9][0-9]*(?![\s\S])/, "Amount must be positive whole rupiah as a digit string")
@@ -33,6 +36,8 @@ export async function execParseExpense(
     output: Output.object({ schema: expenseParseSchema }),
     system: [
       "You parse expense messages into structured data.",
+      "Return one expense per message. When several items share one total, preserve them in one combined item_name and use that total; never invent per-item prices.",
+      'Example: "gua beli rokok, mie, es teh, totalnya 50k" has item_name "rokok, mie, es teh" and amount "50000".',
       "Available categories:",
       categoryList,
       "",

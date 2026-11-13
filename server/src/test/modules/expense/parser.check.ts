@@ -18,6 +18,12 @@ const cases = [
   { text: "Makan malam 1,5jt tanggal 6 November 2026", amount: "1500000", date: "2026-11-06" },
   { text: "Makan malam 1.5jt tanggal 6 November 2026", amount: "1500000", date: "2026-11-06" },
   { text: "Bakso 15 ribu kemarin", amount: "15000" },
+  {
+    text: "gua beli rokok, mie, es teh, totalnya 50k",
+    amount: "50000",
+    daysAgo: 0,
+    items: ["rokok", "mie", "es teh"],
+  },
 ];
 
 console.log(
@@ -29,13 +35,23 @@ for (const scenario of cases) {
   const result = await execParseExpense(llm, scenario.text, categories);
   assert.equal(result.amount, scenario.amount, scenario.text);
   assert.equal(result.currency, "IDR", scenario.text);
-  assert.equal(result.category, "food", scenario.text);
-  const yesterday = new Intl.DateTimeFormat("en-CA", {
+  if (scenario.items) {
+    for (const item of scenario.items) {
+      assert.ok(result.item_name.toLowerCase().includes(item), `${scenario.text}: missing ${item}`);
+    }
+    assert.ok(
+      categories.some((category) => category.slug === result.category),
+      scenario.text
+    );
+  } else {
+    assert.equal(result.category, "food", scenario.text);
+  }
+  const relativeDate = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Jakarta",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).format(new Date(started.getTime() - 86_400_000));
-  assert.equal(result.date, scenario.date ?? yesterday, scenario.text);
+  }).format(new Date(started.getTime() - (scenario.daysAgo ?? 1) * 86_400_000));
+  assert.equal(result.date, scenario.date ?? relativeDate, scenario.text);
   console.log(`Passed: ${scenario.text}`);
 }

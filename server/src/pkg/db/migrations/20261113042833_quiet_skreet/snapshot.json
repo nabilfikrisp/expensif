@@ -1,0 +1,161 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "1bbe9cb5-d7df-407f-aa1f-b4fd1024915c",
+  "prevIds": [
+    "21274513-c535-4731-ac6e-472ab139f403"
+  ],
+  "footprints": [
+    {
+      "statementType": "rename_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "messages",
+        "external_chat_id"
+      ],
+      "writes": [
+        "s|col|public.messages.external_chat_id",
+        "n|col|public.messages.external_chat_id",
+        "s|col|public.messages.external_conversation_id",
+        "n|col|public.messages.external_conversation_id"
+      ],
+      "reads": [
+        "n|tbl|public.messages",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "drop_unique",
+      "statementTarget": [
+        "table",
+        "public",
+        "messages"
+      ],
+      "writes": [
+        "s|uq|public.messages.messages_external_source_unique",
+        "n|uq|public.messages.messages_external_source_unique",
+        "e|uq|public.messages.messages_external_source_unique",
+        "n|con|public.messages.messages_external_source_unique",
+        "n|rel|public.messages_external_source_unique"
+      ],
+      "reads": [
+        "n|tbl|public.messages",
+        "n|sch|public",
+        "e|col|public.messages.platform",
+        "e|col|public.messages.external_conversation_id",
+        "e|col|public.messages.external_message_id"
+      ],
+      "sharedWrites": [
+        "e|uniqueness|public.messages.external_conversation_id.external_message_id.platform"
+      ]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "messages",
+        "idempotency_key"
+      ],
+      "writes": [
+        "s|col|public.messages.idempotency_key",
+        "n|col|public.messages.idempotency_key",
+        "e|col|public.messages.idempotency_key"
+      ],
+      "reads": [
+        "n|tbl|public.messages",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "messages",
+        "external_conversation_id"
+      ],
+      "writes": [
+        "s|colprop|public.messages.external_conversation_id.notNull"
+      ],
+      "reads": [
+        "n|tbl|public.messages",
+        "n|sch|public",
+        "n|col|public.messages.external_conversation_id"
+      ],
+      "sqlHash": "62b3ecebeb23b273"
+    },
+    {
+      "statementType": "add_unique",
+      "statementTarget": [
+        "table",
+        "public",
+        "messages"
+      ],
+      "writes": [
+        "s|uq|public.messages.messages_idempotency_key_key",
+        "n|uq|public.messages.messages_idempotency_key_key",
+        "e|uq|public.messages.messages_idempotency_key_key",
+        "n|con|public.messages.messages_idempotency_key_key",
+        "n|rel|public.messages_idempotency_key_key"
+      ],
+      "reads": [
+        "n|tbl|public.messages",
+        "n|sch|public",
+        "n|col|public.messages.idempotency_key"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "rename",
+      "key": "columns\u0000[\"public\",\"messages\",\"external_chat_id\"]",
+      "set": {
+        "name": "external_conversation_id"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "messages",
+        "name": "idempotency_key",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "messages",
+        "name": "messages_idempotency_key_key",
+        "nameExplicit": false,
+        "columns": [
+          "idempotency_key"
+        ],
+        "nullsNotDistinct": false,
+        "entityType": "uniques"
+      }
+    },
+    {
+      "op": "drop",
+      "key": "uniques\u0000[\"public\",\"messages\",\"messages_external_source_unique\"]"
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"messages\",\"external_conversation_id\"]",
+      "set": {
+        "notNull": false
+      }
+    }
+  ]
+}

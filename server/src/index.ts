@@ -12,7 +12,7 @@ const env = initEnv();
 const { db, client } = initDb(env.DATABASE_URL);
 const logger = initLogger(env);
 const llm = initLlm(env.OPENROUTER_API_KEY, env.OPENROUTER_MODEL);
-const { app, useCases, services } = initApp({ env, db, logger });
+const { app, useCases, services } = await initApp({ env, db, logger });
 const bot = initBotApp({ env, db, logger, llm, linkedAccountUseCase: useCases.linkedAccount });
 const sessionCleanup = initScheduledJob({
   name: "session-cleanup",

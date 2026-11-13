@@ -4,14 +4,16 @@ import { initAuthRoutes } from "@/modules/auth/controllers/http";
 import { initAuthMiddleware } from "@/modules/auth/controllers/middleware";
 import { initAuthService } from "@/modules/auth/service";
 import { initAuthUseCase } from "@/modules/auth/use-case";
+import { initCategoryService } from "@/modules/category/service";
 import { registerExpenseCommands } from "@/modules/expense/controllers/bot";
 import { initExpenseService } from "@/modules/expense/service";
+import { initExpenseUseCase } from "@/modules/expense/use-case";
 import { registerLinkCommand } from "@/modules/linked-account/controllers/bot";
-import { initRequireLinkedAccountMiddleware } from "@/modules/linked-account/controllers/bot-middleware";
 import { initLinkedAccountRoutes } from "@/modules/linked-account/controllers/http";
 import { initLinkedAccountService } from "@/modules/linked-account/service";
 import { initLinkedAccountUseCase } from "@/modules/linked-account/use-case";
 import type { LinkedAccountUseCase } from "@/modules/linked-account/use-case";
+import { initMessageService } from "@/modules/message/service";
 import { initSessionService } from "@/modules/session/service";
 import { initUserRoutes } from "@/modules/user/controllers/http";
 import { initUserService } from "@/modules/user/service";
@@ -31,7 +33,10 @@ interface InitAppParams {
   rateLimitOverrides?: RateLimitOverrides;
 }
 
-export function initApp({ env, db, logger, rateLimitOverrides }: InitAppParams) {
+export async function initApp({ env, db, logger, rateLimitOverrides }: InitAppParams) {
+  const categoryService = initCategoryService(db);
+  await categoryService.seedCategories();
+
   const authService = initAuthService(env, db);
   const sessionService = initSessionService(env, db);
   const authUseCase = initAuthUseCase({ db, authService, sessionService });
@@ -97,11 +102,17 @@ interface InitBotAppParams {
 }
 
 export function initBotApp({ env, db, logger, llm, linkedAccountUseCase }: InitBotAppParams) {
-  const expenseService = initExpenseService(llm, db);
+  const categoryService = initCategoryService(db);
+  const expenseService = initExpenseService(llm, db, categoryService);
   const linkedAccountService = initLinkedAccountService(db);
-  const requireLinkedAccount = initRequireLinkedAccountMiddleware(linkedAccountService);
+  const expenseUseCase = initExpenseUseCase({
+    db,
+    expenseService,
+    linkedAccountService,
+    messageService: initMessageService(db),
+  });
   const bot = initBot({ logger, token: env.TELEGRAM_BOT_TOKEN });
-  registerExpenseCommands({ bot, logger, expenseService, middleware: [requireLinkedAccount] });
+  registerExpenseCommands({ bot, logger, expenseUseCase });
   registerLinkCommand({ bot, logger, linkedAccountUseCase });
   bot.command("start", (ctx) => ctx.reply("Welcome! Up and running."));
   bot.on("message", (ctx) => ctx.reply("Got another message!"));
