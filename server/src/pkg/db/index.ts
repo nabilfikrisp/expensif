@@ -11,6 +11,7 @@ export function initDb(
   const client = new Pool({
     connectionString: databaseUrl,
     max: 10,
+    connectionTimeoutMillis: 5_000,
     ...options,
   });
 
