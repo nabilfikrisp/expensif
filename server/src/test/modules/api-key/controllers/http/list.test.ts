@@ -2,6 +2,7 @@ import type { OpenAPIHono } from "@hono/zod-openapi";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { listApiKeysRespSchema } from "@/modules/api-key/controllers/http/list";
+import { apiKeys } from "@/modules/api-key/schema";
 import { API_PREFIX } from "@/pkg/http";
 import { initTest } from "@/test/helper/app";
 import { testBearerAuthentication } from "@/test/helper/assertions";
@@ -127,6 +128,72 @@ describe(`GET ${API_PREFIX}/api-keys`, () => {
     expect(response.data).toHaveLength(1);
     expect(response.data[0].label).toContain("telegram");
     expect(response.pagination).toEqual({ page: 2, limit: 1, total: 2, totalPages: 2 });
+  });
+
+  it("paginates in creation and ID order with timestamp ties and filters", async () => {
+    const { userId, accessToken } = await seedUser(ctx, mockUser);
+    const other = await seedUser(ctx, { ...mockUser, email: "other@example.com" });
+    const earlier = "2026-01-01T00:00:00.000Z";
+    const later = "2026-01-02T00:00:00.000Z";
+    const fixtures = [
+      { id: "key-7", createdAt: later, revokedAt: null },
+      { id: "key-4", createdAt: earlier, revokedAt: earlier },
+      { id: "key-2", createdAt: earlier, revokedAt: null },
+      { id: "key-6", createdAt: later, revokedAt: later },
+      { id: "key-1", createdAt: later, revokedAt: null },
+      { id: "key-5", createdAt: earlier, revokedAt: null },
+      { id: "key-3", createdAt: earlier, revokedAt: null },
+    ];
+    await ctx.db.insert(apiKeys).values(
+      [
+        ...fixtures.map((key) => ({ ...key, userId, label: "Telegram" })),
+        { id: "key-0", createdAt: earlier, revokedAt: null, userId, label: "other" },
+        {
+          id: "key-8",
+          createdAt: earlier,
+          revokedAt: null,
+          userId: other.userId,
+          label: "Telegram",
+        },
+      ].map((key) => ({
+        ...key,
+        keyHash: `hash-${key.id}`,
+        keyHint: "ek_****test",
+        expiresAt: "2026-01-03T00:00:00.000Z",
+      }))
+    );
+
+    for (const [status, expectedIds] of [
+      ["active", ["key-2", "key-3", "key-5", "key-1", "key-7"]],
+      ["revoked", ["key-4", "key-6"]],
+      ["all", ["key-2", "key-3", "key-4", "key-5", "key-1", "key-6", "key-7"]],
+    ] as const) {
+      const limit = 2;
+      const totalPages = Math.ceil(expectedIds.length / limit);
+      for (let pass = 0; pass < 2; pass++) {
+        const seenIds: string[] = [];
+        for (let page = 1; page <= totalPages + 1; page++) {
+          const res = await app.request(
+            `${API_PREFIX}/api-keys?label=telegram&status=${status}&page=${page}&limit=${limit}`,
+            { headers: { Authorization: `Bearer ${accessToken}` } }
+          );
+          expect(res.status).toBe(200);
+          const body = listApiKeysRespSchema.parse(await res.json());
+          expect(body.success).toBe(true);
+          expect(body.pagination).toEqual({
+            page,
+            limit,
+            total: expectedIds.length,
+            totalPages,
+          });
+          const ids = body.data.map((key) => key.id);
+          expect(ids).toEqual(expectedIds.slice((page - 1) * limit, page * limit));
+          seenIds.push(...ids);
+        }
+        expect(seenIds).toEqual(expectedIds);
+        expect(new Set(seenIds).size).toBe(expectedIds.length);
+      }
+    }
   });
 
   it("filters active, revoked, and all keys", async () => {

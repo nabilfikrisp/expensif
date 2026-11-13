@@ -51,6 +51,7 @@ export function initListApiKeys({ db }: InitListApiKeysDeps) {
       })
       .from(apiKeys)
       .where(where)
+      .orderBy(apiKeys.createdAt, apiKeys.id)
       .limit(limit)
       .offset(offset);
 
