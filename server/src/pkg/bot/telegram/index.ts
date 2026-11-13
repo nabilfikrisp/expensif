@@ -12,6 +12,14 @@ export function initBot({ token, logger }: InitBotParams) {
     logger.error({ err: err.error, updateId: err.ctx.update.update_id }, "Bot update failed");
   });
   bot.on(["message", "channel_post"], async (ctx, next) => {
+    logger.info(
+      {
+        updateId: ctx.update.update_id,
+        messageId: ctx.msg.message_id,
+        chatId: ctx.chat.id,
+      },
+      "Telegram message received"
+    );
     if (ctx.chat.type !== "private") {
       await ctx.reply("Please use this bot in a private chat.");
       return;
