@@ -5,7 +5,7 @@ import { initGenerateApiKeyRoute } from "./generate";
 import { initListApiKeysRoute } from "./list";
 import { initRevokeApiKeyRoute } from "./revoke";
 
-import type { ApiKeyService } from "@/modules/api-key/service";
+import type { ApiKeyService } from "@/modules/api-key/service/interface";
 import type { AuthMiddleware } from "@/modules/auth/controllers/middleware";
 import { handleDomainError } from "@/shared/handle-domain-error";
 

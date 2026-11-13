@@ -4,7 +4,7 @@ import { initDeleteLinkedAccountRoute } from "./delete";
 import { initListLinkedAccountsRoute } from "./list";
 
 import type { AuthMiddleware } from "@/modules/auth/controllers/middleware";
-import type { LinkedAccountService } from "@/modules/linked-account/service";
+import type { LinkedAccountService } from "@/modules/linked-account/service/interface";
 import { handleDomainError } from "@/shared/handle-domain-error";
 
 export function initLinkedAccountRoutes(

@@ -35,6 +35,9 @@ describe(`POST ${API_PREFIX}/api-key`, () => {
     expect(res.status).toBe(201);
     const respBody: unknown = await res.json();
     const response = generateApiKeyRespSchema.parse(respBody);
+    expect(Object.keys((respBody as { data: object }).data).sort()).toEqual(
+      ["id", "key", "keyHint", "label", "createdAt", "expiresAt"].sort()
+    );
     expect(response.success).toBe(true);
     expect(response.data.label).toBe("telegram link");
     expect(response.data.key).toMatch(/^ek_[a-f0-9]{32}$/);

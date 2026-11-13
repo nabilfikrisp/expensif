@@ -1,7 +1,7 @@
 import { OpenAPIHono, createRoute } from "@hono/zod-openapi";
 
 import type { AuthMiddleware } from "@/modules/auth/controllers/middleware";
-import type { UserService } from "@/modules/user/service";
+import type { UserService } from "@/modules/user/service/interface";
 import { errorRespSchema, successRespSchema } from "@/shared/response.schema";
 
 interface DeleteUserRouteDeps {

@@ -1,7 +1,7 @@
 import type { Bot } from "grammy";
 
 import { LinkedAccountError } from "@/modules/linked-account/error";
-import type { LinkedAccountUseCase } from "@/modules/linked-account/use-case";
+import type { LinkedAccountUseCase } from "@/modules/linked-account/use-case/interface";
 import type { Logger } from "@/pkg/logger";
 
 const wording = {

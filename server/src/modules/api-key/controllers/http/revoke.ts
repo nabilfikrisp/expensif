@@ -1,6 +1,6 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 
-import type { ApiKeyService } from "@/modules/api-key/service";
+import type { ApiKeyService } from "@/modules/api-key/service/interface";
 import type { AuthMiddleware } from "@/modules/auth/controllers/middleware";
 import { errorRespSchema, successRespSchema } from "@/shared/response.schema";
 

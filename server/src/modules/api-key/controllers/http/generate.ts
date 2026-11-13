@@ -1,7 +1,6 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 
-import type { ApiKeyService } from "@/modules/api-key/service";
-import { apiKeyRespSchema } from "@/modules/api-key/zod-schema";
+import type { ApiKeyService } from "@/modules/api-key/service/interface";
 import type { AuthMiddleware } from "@/modules/auth/controllers/middleware";
 import { errorRespSchema, successRespSchema } from "@/shared/response.schema";
 
@@ -13,7 +12,14 @@ const generateApiKeyReqSchema = z
 
 export const generateApiKeyRespSchema = successRespSchema
   .extend({
-    data: apiKeyRespSchema.extend({ key: z.string() }).omit({ lastUsedAt: true, revokedAt: true }),
+    data: z.object({
+      id: z.string(),
+      keyHint: z.string(),
+      label: z.string().nullable(),
+      createdAt: z.string(),
+      expiresAt: z.string(),
+      key: z.string(),
+    }),
   })
   .openapi("GenerateApiKeyResponse");
 

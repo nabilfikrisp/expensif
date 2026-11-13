@@ -1,7 +1,7 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 
 import type { AuthMiddleware } from "@/modules/auth/controllers/middleware";
-import type { LinkedAccountService } from "@/modules/linked-account/service";
+import type { LinkedAccountService } from "@/modules/linked-account/service/interface";
 import { errorRespSchema, successRespSchema } from "@/shared/response.schema";
 
 const deleteLinkedAccountParamsSchema = z

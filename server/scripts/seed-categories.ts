@@ -9,7 +9,7 @@ if (!databaseUrl) {
 }
 
 const { db, client } = initDb(databaseUrl);
-const categoryService = initCategoryService(db);
+const categoryService = initCategoryService({ db });
 try {
   await categoryService.seedCategories();
   console.log("Category setup complete.");

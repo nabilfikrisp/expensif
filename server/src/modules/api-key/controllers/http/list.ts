@@ -1,7 +1,7 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 
-import type { ApiKeyService } from "@/modules/api-key/service";
-import { apiKeyRespSchema } from "@/modules/api-key/zod-schema";
+import { apiKeyRespSchema } from "@/modules/api-key/controllers/zod-schema";
+import type { ApiKeyService } from "@/modules/api-key/service/interface";
 import type { AuthMiddleware } from "@/modules/auth/controllers/middleware";
 import { errorRespSchema, paginatedRespSchema } from "@/shared/response.schema";
 

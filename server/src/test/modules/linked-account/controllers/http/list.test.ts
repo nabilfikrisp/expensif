@@ -31,7 +31,13 @@ describe(`GET ${API_PREFIX}/linked-account`, () => {
       headers: owner.headers,
     });
     expect(res.status).toBe(200);
-    expect(listLinkedAccountsRespSchema.parse(await res.json()).data).toEqual([owner.account]);
+    const body = (await res.json()) as { data: Record<string, unknown>[] };
+    expect(Object.keys(body.data[0]).sort()).toEqual(
+      ["id", "platform", "platformUserId", "platformUsername", "linkedAt"].sort()
+    );
+    expect(body).not.toHaveProperty("data.0.userId");
+    expect(body).not.toHaveProperty("data.0.idempotencyKey");
+    expect(listLinkedAccountsRespSchema.parse(body).data).toEqual([owner.account]);
   });
 
   it.each([undefined, "Bearer invalid-token"])(

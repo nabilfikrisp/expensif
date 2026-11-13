@@ -1,8 +1,8 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 
 import type { AuthMiddleware } from "@/modules/auth/controllers/middleware";
-import type { UserService } from "@/modules/user/service";
-import { userRespSchema } from "@/modules/user/zod-schema";
+import { userRespSchema } from "@/modules/auth/controllers/zod-schema";
+import type { UserService } from "@/modules/user/service/interface";
 import { errorRespSchema, successRespSchema } from "@/shared/response.schema";
 
 export const meRespSchema = successRespSchema

@@ -1,6 +1,6 @@
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 
-import type { AuthUseCase } from "@/modules/auth/use-case";
+import type { AuthUseCase } from "@/modules/auth/use-case/interface";
 import type { CookieJar } from "@/pkg/cookies";
 import type { RateLimitMiddleware } from "@/shared/rate-limit";
 import { errorRespSchema, tokenRespSchema } from "@/shared/response.schema";

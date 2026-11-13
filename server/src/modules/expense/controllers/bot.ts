@@ -2,7 +2,7 @@ import type { Bot } from "grammy";
 
 import { ingestExpenseReqSchema, ingestExpenseRespSchema } from "./zod-schema";
 import type { IngestExpenseResp } from "./zod-schema";
-import type { ExpenseUseCase } from "@/modules/expense/use-case";
+import type { ExpenseUseCase } from "@/modules/expense/use-case/interface";
 import { LinkedAccountError } from "@/modules/linked-account/error";
 import type { Logger } from "@/pkg/logger";
 

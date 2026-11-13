@@ -99,6 +99,9 @@ describe(`GET ${API_PREFIX}/api-key`, () => {
     const response = listApiKeysRespSchema.parse(respBody);
     expect(response.success).toBe(true);
     expect(response.data).toHaveLength(1);
+    expect(Object.keys((respBody as { data: object[] }).data[0]).sort()).toEqual(
+      ["id", "keyHint", "label", "createdAt", "expiresAt", "lastUsedAt", "revokedAt"].sort()
+    );
     expect(response.data[0].label).toBe("own key");
     expect(response.data[0].lastUsedAt).toBeNull();
     expect(response.data[0].revokedAt).toBeNull();

@@ -12,13 +12,13 @@ This file routes repository work and defines mandatory working rules.
 
 ## Work correctly
 
-- Follow [architecture rules](docs/architecture.md); they are mandatory, though future improvements remain possible. Preserve `init*` factories and the layer split. Before new module code, read the [reference module](server/src/modules/api-key/).
+- Follow [architecture rules](docs/architecture.md); they are mandatory. Preserve `init*` factories and the layer split. Use dedicated operation factory files under `service/` and `use-case/`, one explicit module interface per layer, and one independent, method-named `dto.ts` per layer. Small stateless utilities stay in the layer's `index.ts` without factory wrappers, including utilities exposed by its interface. Consumers depend on layer interfaces; callers map DTOs directly. Before new module code, read the [reference module](server/src/modules/api-key/).
 - No workarounds to make tests or features pass. If the correct solution needs a design change, violates architecture, or touches code outside the task, stop and ask. Disclose unavoidable deviations and their reasons in the change summary.
 
 ## Fail loudly
 
 - No empty catches, silent fallbacks, or success reports for failed operations.
-- Translate only handled errors; rethrow unknown errors. Follow [linked-account/use-case.ts](server/src/modules/linked-account/use-case.ts).
+- Translate only handled errors; rethrow unknown errors. Follow [linked-account redemption use case](server/src/modules/linked-account/use-case/redeem-api-key.ts).
 - Process boundaries (`bot.catch`, HTTP error handler) may catch failures to keep running, but must log at error level with context.
 - Startup failures must fail the process.
 - Comment intentional silent behavior with its reason, such as not revealing whether a burned key exists.

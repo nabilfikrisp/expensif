@@ -10,8 +10,8 @@ import { initRefreshRoute } from "./refresh";
 import { initRegisterRoute } from "./register";
 
 import type { AuthMiddleware } from "@/modules/auth/controllers/middleware";
-import type { AuthUseCase } from "@/modules/auth/use-case";
-import type { UserService } from "@/modules/user/service";
+import type { AuthUseCase } from "@/modules/auth/use-case/interface";
+import type { UserService } from "@/modules/user/service/interface";
 import { initCookieJar } from "@/pkg/cookies";
 import type { EnvSchema } from "@/pkg/env";
 import { handleDomainError } from "@/shared/handle-domain-error";

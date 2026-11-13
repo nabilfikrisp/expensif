@@ -76,7 +76,7 @@ beforeAll(async () => {
 });
 beforeEach(async () => {
   await ctx.resetDb();
-  await initCategoryService(ctx.db).seedCategories();
+  await initCategoryService({ db: ctx.db }).seedCategories();
   await ctx.db
     .insert(users)
     .values({ id: userId, name: "Owner", email: "owner@example.com", passwordHash: "unused" });

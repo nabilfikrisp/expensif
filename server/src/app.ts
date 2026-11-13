@@ -12,7 +12,7 @@ import { registerLinkCommand } from "@/modules/linked-account/controllers/bot";
 import { initLinkedAccountRoutes } from "@/modules/linked-account/controllers/http";
 import { initLinkedAccountService } from "@/modules/linked-account/service";
 import { initLinkedAccountUseCase } from "@/modules/linked-account/use-case";
-import type { LinkedAccountUseCase } from "@/modules/linked-account/use-case";
+import type { LinkedAccountUseCase } from "@/modules/linked-account/use-case/interface";
 import { initMessageService } from "@/modules/message/service";
 import { initSessionService } from "@/modules/session/service";
 import { initUserRoutes } from "@/modules/user/controllers/http";
@@ -34,15 +34,15 @@ interface InitAppParams {
 }
 
 export async function initApp({ env, db, logger, rateLimitOverrides }: InitAppParams) {
-  const categoryService = initCategoryService(db);
+  const categoryService = initCategoryService({ db });
   await categoryService.seedCategories();
 
-  const authService = initAuthService(env, db);
-  const sessionService = initSessionService(env, db);
+  const authService = initAuthService({ env, db });
+  const sessionService = initSessionService({ env, db });
   const authUseCase = initAuthUseCase({ db, authService, sessionService });
-  const apiKeyService = initApiKeyService(env, db);
-  const linkedAccountService = initLinkedAccountService(db);
-  const userService = initUserService(db);
+  const apiKeyService = initApiKeyService({ env, db });
+  const linkedAccountService = initLinkedAccountService({ db });
+  const userService = initUserService({ db });
 
   const linkedAccountUseCase = initLinkedAccountUseCase({
     db,
@@ -102,14 +102,14 @@ interface InitBotAppParams {
 }
 
 export function initBotApp({ env, db, logger, llm, linkedAccountUseCase }: InitBotAppParams) {
-  const categoryService = initCategoryService(db);
-  const expenseService = initExpenseService(llm, db, categoryService);
-  const linkedAccountService = initLinkedAccountService(db);
+  const categoryService = initCategoryService({ db });
+  const expenseService = initExpenseService({ llm, db, categoryService });
+  const linkedAccountService = initLinkedAccountService({ db });
   const expenseUseCase = initExpenseUseCase({
     db,
     expenseService,
     linkedAccountService,
-    messageService: initMessageService(db),
+    messageService: initMessageService({ db }),
   });
   const bot = initBot({ logger, token: env.TELEGRAM_BOT_TOKEN });
   registerExpenseCommands({ bot, logger, expenseUseCase });

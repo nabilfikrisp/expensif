@@ -48,6 +48,11 @@ describe(`GET ${API_PREFIX}/auth/me`, () => {
     expect(res.status).toBe(200);
     const respBody: unknown = await res.json();
     const response = meRespSchema.parse(respBody);
+    expect(Object.keys((respBody as { data: { user: object } }).data.user).sort()).toEqual(
+      ["id", "email", "name"].sort()
+    );
+    expect(respBody).not.toHaveProperty("data.user.passwordHash");
+    expect(respBody).not.toHaveProperty("data.user.createdAt");
     expect(response.data.user.email).toBe(mockUser.email);
     expect(response.data.user.name).toBe(mockUser.name);
   });
