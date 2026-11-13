@@ -1,4 +1,3 @@
-import { initBurnApiKey } from "./burn-api-key";
 import type { LinkedAccountUseCase } from "./interface";
 import { initRedeemApiKey } from "./redeem-api-key";
 import type { ApiKeyService } from "@/modules/api-key/service/interface";
@@ -21,6 +20,5 @@ export function initLinkedAccountUseCase({
 }: InitLinkedAccountUseCase): LinkedAccountUseCase {
   return {
     redeemApiKey: initRedeemApiKey({ db, apiKeyService, linkedAccountService, userService }),
-    burnApiKey: initBurnApiKey({ db, apiKeyService }),
   };
 }

@@ -1,5 +1,4 @@
 import { createHmac } from "node:crypto";
-import { initBurnApiKey } from "./burn-api-key";
 import { initConsumeApiKey } from "./consume-api-key";
 import { initDeleteApiKey } from "./delete-api-key";
 import { initGenerateApiKey } from "./generate-api-key";
@@ -22,7 +21,6 @@ export function initApiKeyService({ env, db }: InitApiKeyServiceDeps): ApiKeySer
     generateApiKey: initGenerateApiKey({ env, db, hashApiKey }),
     listApiKeys: initListApiKeys({ db }),
     consumeApiKey: initConsumeApiKey({ hashApiKey }),
-    burnApiKey: initBurnApiKey({ hashApiKey }),
     revokeApiKey: initRevokeApiKey({ db }),
     deleteApiKey: initDeleteApiKey({ db }),
   };

@@ -54,11 +54,6 @@ export type ConsumeApiKeyInput = z.infer<typeof consumeApiKeyInputSchema>;
 export const consumeApiKeyOutputSchema = z.object({ userId: z.string() });
 export type ConsumeApiKeyOutput = z.infer<typeof consumeApiKeyOutputSchema>;
 
-export const burnApiKeyInputSchema = z.object({ plainKey: z.string() });
-export type BurnApiKeyInput = z.infer<typeof burnApiKeyInputSchema>;
-export const burnApiKeyOutputSchema = z.void();
-export type BurnApiKeyOutput = z.infer<typeof burnApiKeyOutputSchema>;
-
 export const revokeApiKeyInputSchema = z.object({ userId: z.string(), keyId: z.string() });
 export type RevokeApiKeyInput = z.infer<typeof revokeApiKeyInputSchema>;
 export const revokeApiKeyOutputSchema = z.void();

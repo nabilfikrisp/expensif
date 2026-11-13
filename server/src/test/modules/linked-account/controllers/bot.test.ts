@@ -1,5 +1,5 @@
 import { eq, sql } from "drizzle-orm";
-import { Api, Context } from "grammy";
+import { Context } from "grammy";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { listLinkedAccountsRespSchema } from "@/modules/linked-account/controllers/http/list";
@@ -13,7 +13,6 @@ import { createApiKey } from "@/test/helper/linked-account";
 let ctx: Awaited<ReturnType<typeof initTest>>;
 let tokens: Awaited<ReturnType<typeof seedUser>>;
 const reply = vi.fn<Context["reply"]>();
-const editMessageText = vi.fn<Api["editMessageText"]>();
 
 beforeAll(async () => {
   ctx = await initTest();
@@ -23,9 +22,7 @@ beforeEach(async () => {
   await ctx.resetDb();
   tokens = await seedUser(ctx);
   reply.mockReset().mockResolvedValue({ message_id: 1 } as Awaited<ReturnType<Context["reply"]>>);
-  editMessageText.mockReset().mockResolvedValue(true);
   vi.spyOn(Context.prototype, "reply").mockImplementation(reply);
-  vi.spyOn(Api.prototype, "editMessageText").mockImplementation(editMessageText);
 });
 afterEach(() => vi.restoreAllMocks());
 
@@ -275,7 +272,7 @@ describe("Telegram account linking", () => {
   });
 
   it.each(["unused", "consumed", "unknown"])(
-    "burns an exposed %s key without changing links or usage",
+    "returns a static group reply for an exposed %s key without changing state",
     async (state) => {
       const { id, key } = await issueKey();
       const bot = initTestBot(ctx);
@@ -285,24 +282,16 @@ describe("Telegram account linking", () => {
       const before = await listAccounts();
       const keyBefore = await keyRow(id);
       const exposed = state === "unknown" ? "ek_unknown" : key;
+      reply.mockClear();
       await bot.handleUpdate(botCommand(`/link ${exposed}`, 123, "group"));
-      expect(editMessageText).toHaveBeenLastCalledWith(
-        -100,
-        1,
-        expect.stringContaining("API key has been disabled")
-      );
-      const burned = await keyRow(id);
-      if (state === "unknown") {
-        expect(burned).toEqual(keyBefore);
-      } else {
-        expect(burned.revokedAt).not.toBeNull();
-      }
-      expect(burned.lastUsedAt).toBe(keyBefore.lastUsedAt);
+      expect(reply).toHaveBeenCalledExactlyOnceWith("Please use this bot in a private chat.");
+      expect(await keyRow(id)).toEqual(keyBefore);
       expect(await listAccounts()).toEqual(before);
-      await bot.handleUpdate(botCommand(`/link ${exposed}`, 123, "group"));
-      expect(await keyRow(id)).toEqual(burned);
-      await bot.handleUpdate(botCommand(`/link ${exposed}`, 789));
-      expect(reply).toHaveBeenLastCalledWith("Invalid, expired, or already-used key.");
+      reply.mockRejectedValueOnce(new Error("Telegram unavailable"));
+      await expect(
+        bot.handleUpdate(botCommand(`/link ${exposed}`, 123, "group"))
+      ).rejects.toThrow();
+      expect(await keyRow(id)).toEqual(keyBefore);
       expect(await listAccounts()).toEqual(before);
     }
   );

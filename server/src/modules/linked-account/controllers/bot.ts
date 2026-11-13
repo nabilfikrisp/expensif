@@ -7,8 +7,6 @@ import type { Logger } from "@/pkg/logger";
 const wording = {
   link: {
     usage: "Usage: /link <api-key>\nGet your key from the dashboard.",
-    privateOnly: "Link your account in a private chat with the bot.\n\nDisabling key...",
-    keyBurned: "Link your account in a private chat with the bot.\n\nAPI key has been disabled.",
     success: (name: string, email: string) => `Linked to ${name} (${email})`,
     invalidKey: "Invalid, expired, or already-used key.",
     alreadyLinked: "This Telegram account is already linked.",
@@ -34,14 +32,9 @@ export function registerLinkCommand({
       return;
     }
 
-    // Private chats only: a key pasted in a group is visible to every member.
     const from = ctx.from;
-    if (ctx.chat.type !== "private" || !from) {
-      const msg = await ctx.reply(wording.link.privateOnly);
-      if (token) {
-        await linkedAccountUseCase.burnApiKey(token);
-        await ctx.api.editMessageText(ctx.chat.id, msg.message_id, wording.link.keyBurned);
-      }
+    if (!from) {
+      await ctx.reply("Cannot identify your Telegram account.");
       return;
     }
     const platformUserId = from.id.toString();

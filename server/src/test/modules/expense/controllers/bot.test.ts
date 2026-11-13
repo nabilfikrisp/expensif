@@ -12,7 +12,7 @@ import { users } from "@/modules/user/schema";
 import { initDb } from "@/pkg/db";
 import { initLogger } from "@/pkg/logger";
 import { initTest } from "@/test/helper/app";
-import { initTestBot } from "@/test/helper/bot";
+import { botCommand, initTestBot } from "@/test/helper/bot";
 import { expenseModel } from "@/test/helper/expense-model";
 
 let ctx: Awaited<ReturnType<typeof initTest>>;
@@ -22,7 +22,7 @@ const modelResponse = vi.fn<() => Promise<unknown>>();
 const response = {
   message_id: 1,
   date: 0,
-  chat: { id: -100, type: "group", title: "Test" },
+  chat: { id: 123, type: "private", first_name: "Test" },
   text: "",
 } satisfies Message.TextMessage;
 const parsed = {
@@ -33,7 +33,7 @@ const parsed = {
   category: "food",
 };
 
-function command(text = "/expense bakso 15k", messageId = 42, chatId = -100): Update {
+function command(text = "/expense bakso 15k", messageId = 42, chatId = 123): Update {
   return {
     update_id: messageId,
     message: {
@@ -87,6 +87,26 @@ beforeEach(async () => {
 afterEach(() => vi.restoreAllMocks());
 
 describe("expense command ingestion", () => {
+  it.each(["group", "supergroup"] as const)(
+    "redirects every message in a %s without parsing or saving",
+    async (chatType) => {
+      await link();
+      const { bot } = createBot();
+      for (const text of ["/expense bakso 15k", "/start", "hello"]) {
+        const update = botCommand(text, 123, "group");
+        if (!("message" in update) || !update.message) {
+          throw new Error("Expected a message update");
+        }
+        update.message.chat = { id: -100, type: chatType, title: "Test" };
+        reply.mockClear();
+        await bot.handleUpdate(update);
+        expect(reply).toHaveBeenCalledExactlyOnceWith("Please use this bot in a private chat.");
+      }
+      expect(modelResponse).not.toHaveBeenCalled();
+      await expectNoWrites();
+    }
+  );
+
   it.each([
     { text: "bakso 15k", itemName: "bakso", amount: "15000" },
     {
@@ -122,8 +142,8 @@ describe("expense command ingestion", () => {
           userId,
           linkedAccountId: account.id,
           rawText: `/expense ${text}`,
-          idempotencyKey: "telegram:expense:-100:42",
-          externalConversationId: "-100",
+          idempotencyKey: "telegram:expense:123:42",
+          externalConversationId: "123",
           externalMessageId: "42",
           parseStatus: "parsed",
         }),
@@ -454,7 +474,7 @@ describe("expense command ingestion", () => {
     expect(modelResponse).not.toHaveBeenCalled();
   });
 
-  it("rejects commands without sender identity", async () => {
+  it("redirects channel commands to private chat without parsing", async () => {
     const { bot } = createBot();
     await bot.handleUpdate({
       update_id: 1,
@@ -465,7 +485,7 @@ describe("expense command ingestion", () => {
         entities: [{ type: "bot_command", offset: 0, length: 8 }],
       },
     });
-    expect(reply).toHaveBeenCalledExactlyOnceWith("Cannot identify your Telegram account.");
+    expect(reply).toHaveBeenCalledExactlyOnceWith("Please use this bot in a private chat.");
     expect(modelResponse).not.toHaveBeenCalled();
   });
 

@@ -15,7 +15,7 @@ export function initConsumeApiKey({ hashApiKey }: InitConsumeApiKeyDeps) {
    * Validates key hash, checks not revoked/used/expired, marks as used.
    * Throws ApiKeyError.keyInvalid() if validation fails.
    * Must be called within a transaction for rollback support, `tx` is required
-   * so a caller can't accidentally burn a key outside one.
+   * so a caller can't accidentally consume a key outside one.
    */
   return async function consumeApiKey(
     plainKey: ConsumeApiKeyInput["plainKey"],

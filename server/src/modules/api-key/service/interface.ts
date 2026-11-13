@@ -5,14 +5,12 @@ import type {
   ListApiKeysOutput,
   ConsumeApiKeyInput,
   ConsumeApiKeyOutput,
-  BurnApiKeyInput,
-  BurnApiKeyOutput,
   RevokeApiKeyInput,
   RevokeApiKeyOutput,
   DeleteApiKeyInput,
   DeleteApiKeyOutput,
 } from "./dto";
-import type { DbTx, Tx } from "@/pkg/db";
+import type { Tx } from "@/pkg/db";
 
 export interface ApiKeyService {
   generateApiKey(
@@ -24,7 +22,6 @@ export interface ApiKeyService {
     filters: ListApiKeysInput["filters"]
   ): Promise<ListApiKeysOutput>;
   consumeApiKey(plainKey: ConsumeApiKeyInput["plainKey"], tx: Tx): Promise<ConsumeApiKeyOutput>;
-  burnApiKey(plainKey: BurnApiKeyInput["plainKey"], tx: DbTx): Promise<BurnApiKeyOutput>;
   revokeApiKey(
     userId: RevokeApiKeyInput["userId"],
     keyId: RevokeApiKeyInput["keyId"]

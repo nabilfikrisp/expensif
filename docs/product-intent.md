@@ -11,7 +11,7 @@ This document defines the intended expense-tracking experience and its scope.
 
 ## Intended experience
 
-Expensif is a multi-user expense tracker. Users send natural-language expense messages to a bot, then view and correct their expenses in a web dashboard or through the bot.
+Expensif is a multi-user expense tracker. Users send natural-language expense messages to a bot in private chats, then view and correct their expenses in a web dashboard or through the bot.
 
 - Users register through the application and link a bot account using a short-lived, single-use API key. A linking key is not a general API bearer credential.
 - Expense commands resolve the linked owner, produce one expense record initially, and save immediately without a confirmation step. Multiple expense records per message remain future scope; an expense may include [several items sharing one total](data-model.md#expenses).
