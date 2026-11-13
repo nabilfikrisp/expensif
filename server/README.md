@@ -69,4 +69,4 @@ pnpm lintformat
 pnpm test:run
 ```
 
-Before starting with `dev` or `start`, apply committed migrations. Startup seeds the seven categories against the configured `DATABASE_URL` and fails if seeding fails. For manual setup, `pnpm db:seed:categories` remains available and is safe to repeat. `dev` enables grammY debug output. `start` runs the built server. `test:run` and `test` manage the dedicated test database automatically; [test setup](../README.md#checks-and-tests) covers requirements and recovery.
+Before starting with `dev` or `start`, apply committed migrations. Startup seeds the seven categories against the configured `DATABASE_URL` and fails if seeding fails. For manual setup, `pnpm db:seed:categories` remains available and is safe to repeat. `dev` enables grammY debug diagnostics on stderr, separately from application JSON logs on stdout. Environment-validation failures also go to stderr before application initialization. `start` runs the built server. `test:run` and `test` manage the dedicated test database automatically; [test setup](../README.md#checks-and-tests) covers requirements and recovery.

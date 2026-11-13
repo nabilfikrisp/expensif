@@ -1,10 +1,11 @@
 // Run from server/: pnpm test:standalone:http-logging
-import pino from "pino";
 import assert from "node:assert/strict";
 
 import type { EnvSchema } from "@/pkg/env";
 import { initHttp } from "@/pkg/http";
 import { initRateLimit } from "@/pkg/http/rate-limit";
+import { initLogger } from "@/pkg/logger";
+import { initRateLimiters } from "@/shared/rate-limit";
 
 const env: EnvSchema = {
   NODE_ENV: "test",
@@ -26,11 +27,21 @@ const env: EnvSchema = {
 
 function setup(limit = 100) {
   const logs: string[] = [];
-  const logger = pino({ level: "info" }, { write: (line) => logs.push(line) });
+  const root = initLogger(
+    { NODE_ENV: "production" },
+    {
+      write(line) {
+        const entry = JSON.parse(line) as { service: string };
+        assert.equal(entry.service, "api");
+        logs.push(line);
+      },
+    }
+  );
+  const logger = root.child({ service: "api" });
   const app = initHttp(env, logger, [], {
     defaultLimiter: initRateLimit({ limit, windowMs: 60_000, keyGenerator: () => "test" }),
   });
-  return { app, logs };
+  return { app, logs, logger };
 }
 
 function streamingRequest(body: ReadableStream<Uint8Array>, headers?: HeadersInit) {
@@ -47,7 +58,19 @@ const timeout = setTimeout(() => {
   throw new Error("HTTP logging checks timed out; a response may be waiting for its body");
 }, 5000);
 
+// These transport checks capture logs without a database or external API.
 try {
+  {
+    const { app, logs, logger } = setup();
+    const limiter = initRateLimiters("nginx", logger).login;
+    app.get("/proxy", limiter, (c) => c.text("ok"));
+    assert.equal((await app.request("/proxy")).status, 200);
+    const warning = logs
+      .map((line) => JSON.parse(line) as { level: number; trustedHeader?: string })
+      .find((entry) => entry.level === 40);
+    assert.equal(warning?.trustedHeader, "x-real-ip");
+  }
+
   {
     const { app, logs } = setup();
     let calls = 0;

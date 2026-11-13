@@ -16,8 +16,8 @@ beforeAll(async () => {
 beforeEach(async () => ctx.resetDb());
 afterEach(async () => ctx.resetDb());
 
-function initializeApp() {
-  return initApp({ env: ctx.env, db: ctx.db, logger: initLogger(ctx.env) });
+function initializeApp(dbLogger = initLogger(ctx.env)) {
+  return initApp({ env: ctx.env, db: ctx.db, logger: initLogger(ctx.env), dbLogger });
 }
 
 describe("category setup", () => {
@@ -65,8 +65,18 @@ describe("category setup", () => {
     await ctx.db
       .insert(categories)
       .values({ id: "category_health", name: "Custom", slug: "custom" });
-    await expect(initializeApp()).rejects.toMatchObject({
+    const logs: string[] = [];
+    const root = initLogger({ NODE_ENV: "production" }, { write: (line) => logs.push(line) });
+    const dbLogger = root.child({ service: "runtime", component: "db" });
+    await expect(initializeApp(dbLogger)).rejects.toMatchObject({
       cause: { code: "23505" },
+    });
+    expect(logs).toHaveLength(1);
+    expect(JSON.parse(logs[0])).toMatchObject({
+      level: 50,
+      service: "runtime",
+      component: "db",
+      msg: "Database startup failed while seeding categories",
     });
     expect(await ctx.db.select().from(categories)).toEqual([
       { id: "category_health", name: "Custom", slug: "custom" },

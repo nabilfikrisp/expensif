@@ -8,6 +8,9 @@ let isShuttingDown = false;
 
 interface ShutdownOptions {
   logger: Logger;
+  apiLogger: Logger;
+  botLogger: Logger;
+  schedulerLogger: Logger;
   bot: Bot;
   botLifecycle: Promise<void>;
   httpServer: ServerType;
@@ -23,7 +26,17 @@ export async function shutdown(signal: string, opts: ShutdownOptions) {
   }
   isShuttingDown = true;
 
-  const { logger, bot, botLifecycle, httpServer, dbClient, stopJobs } = opts;
+  const {
+    logger,
+    apiLogger,
+    botLogger,
+    schedulerLogger,
+    bot,
+    botLifecycle,
+    httpServer,
+    dbClient,
+    stopJobs,
+  } = opts;
 
   logger.info(`Received ${signal}, shutting down gracefully...`);
 
@@ -36,12 +49,12 @@ export async function shutdown(signal: string, opts: ShutdownOptions) {
     await bot.stop();
     // stop() acknowledges updates but does not wait for their handlers.
     await botLifecycle;
-    logger.info("Telegram bot stopped");
+    botLogger.info("Telegram bot stopped");
   }
 
   async function stopScheduledJobs() {
     await stopJobs();
-    logger.info("Scheduled jobs stopped");
+    schedulerLogger.info("Scheduled jobs stopped");
   }
 
   async function closeHttp() {
@@ -54,7 +67,7 @@ export async function shutdown(signal: string, opts: ShutdownOptions) {
         }
       });
     });
-    logger.info("HTTP server closed");
+    apiLogger.info("HTTP server closed");
   }
 
   try {

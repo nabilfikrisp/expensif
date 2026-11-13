@@ -3,6 +3,7 @@ import { getConnInfo } from "@hono/node-server/conninfo";
 import type { Context } from "hono";
 import type { BlankEnv } from "hono/types";
 import { rateLimiter } from "hono-rate-limiter";
+import type { Logger } from "@/pkg/logger";
 
 export interface RateLimitOptions {
   limit: number;
@@ -35,7 +36,10 @@ export function initRateLimit({ limit, windowMs, keyGenerator }: RateLimitOption
  * Build a rate-limit key generator from an explicitly trusted proxy header,
  * or use the socket address when no trusted header is configured.
  */
-export function initClientIp(trustedHeader?: string): RateLimitOptions["keyGenerator"] {
+export function initClientIp(
+  logger: Logger,
+  trustedHeader?: string
+): RateLimitOptions["keyGenerator"] {
   return (c) => {
     if (trustedHeader) {
       const clientIp = c.req.header(trustedHeader)?.trim();
@@ -43,9 +47,7 @@ export function initClientIp(trustedHeader?: string): RateLimitOptions["keyGener
         return clientIp;
       }
 
-      console.warn(
-        `[rate-limit] Trusted client IP header "${trustedHeader}" is missing; using "unknown".`
-      );
+      logger.warn({ trustedHeader }, "Trusted client IP header is missing; using unknown");
       return "unknown";
     }
 

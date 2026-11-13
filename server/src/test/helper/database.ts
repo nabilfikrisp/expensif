@@ -11,11 +11,15 @@ import {
   users,
 } from "@/pkg/db/schema";
 
+import { initLogger } from "@/pkg/logger";
+
 export const TEST_DATABASE_URL =
   "postgres://expensif_test:local_test_password@127.0.0.1:5434/expensif_test";
 
 export async function initTestDb() {
-  const database = initDb(TEST_DATABASE_URL, { connectionTimeoutMillis: 5000 });
+  const database = initDb(TEST_DATABASE_URL, initLogger({ NODE_ENV: "test" }), {
+    connectionTimeoutMillis: 5000,
+  });
   const { client } = database;
 
   try {

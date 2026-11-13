@@ -1,4 +1,5 @@
 import { initClientIp, initRateLimit } from "@/pkg/http/rate-limit";
+import type { Logger } from "@/pkg/logger";
 import type { ProxyKind } from "@/shared/proxy-ip";
 import { clientIpHeaderFor } from "@/shared/proxy-ip";
 
@@ -30,9 +31,10 @@ const POLICIES: Record<PolicyName, RateLimitPolicy> = {
  */
 export function initRateLimiters(
   proxyKind: ProxyKind,
+  logger: Logger,
   overrides: RateLimitOverrides = {}
 ): RateLimiters {
-  const keyGenerator = initClientIp(clientIpHeaderFor(proxyKind));
+  const keyGenerator = initClientIp(logger, clientIpHeaderFor(proxyKind));
   const resolved: Record<PolicyName, RateLimitPolicy> = {
     default: { ...POLICIES.default, ...overrides.default },
     login: { ...POLICIES.login, ...overrides.login },

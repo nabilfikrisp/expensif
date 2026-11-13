@@ -9,8 +9,10 @@ const LOG_LEVELS: Record<string, string> = {
   production: "info",
 };
 
-export function initLogger(env: EnvSchema): Logger {
-  return pino({
-    level: LOG_LEVELS[env.NODE_ENV],
-  });
+export function initLogger(
+  env: Pick<EnvSchema, "NODE_ENV">,
+  destination?: pino.DestinationStream
+): Logger {
+  const options = { level: LOG_LEVELS[env.NODE_ENV] };
+  return destination ? pino(options, destination) : pino(options);
 }

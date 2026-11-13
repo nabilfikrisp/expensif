@@ -24,6 +24,7 @@
     "test:standalone:shutdown": "node --import tsx src/test/shutdown.check.ts",
     "test:standalone:scheduler": "node --import tsx src/test/pkg/scheduler/scheduler.check.ts",
     "test:standalone:auth-origin": "node --import tsx src/test/pkg/http/auth-origin.check.ts",
+    "test:standalone:logging": "node --import tsx src/test/pkg/logger/logging.check.ts",
     "test:standalone:http-logging": "node --import tsx src/test/pkg/http/logging.check.ts"
   },
   "devEngines": {

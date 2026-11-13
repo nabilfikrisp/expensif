@@ -30,12 +30,18 @@ interface InitAppParams {
   env: EnvSchema;
   db: Db;
   logger: Logger;
+  dbLogger: Logger;
   rateLimitOverrides?: RateLimitOverrides;
 }
 
-export async function initApp({ env, db, logger, rateLimitOverrides }: InitAppParams) {
+export async function initApp({ env, db, logger, dbLogger, rateLimitOverrides }: InitAppParams) {
   const categoryService = initCategoryService({ db });
-  await categoryService.seedCategories();
+  try {
+    await categoryService.seedCategories();
+  } catch (err) {
+    dbLogger.error({ err }, "Database startup failed while seeding categories");
+    throw err;
+  }
 
   const authService = initAuthService({ env, db });
   const sessionService = initSessionService({ env, db });
@@ -53,7 +59,7 @@ export async function initApp({ env, db, logger, rateLimitOverrides }: InitAppPa
 
   const accessSecret = authService.encodeSecret(env.JWT_SECRET);
   const authMiddleware = initAuthMiddleware((t) => authService.verifyToken(t, accessSecret));
-  const rateLimiters = initRateLimiters(env.DEPLOY_PROXY, rateLimitOverrides);
+  const rateLimiters = initRateLimiters(env.DEPLOY_PROXY, logger, rateLimitOverrides);
   const authRoutes = initAuthRoutes({
     env,
     authUseCase,

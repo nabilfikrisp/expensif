@@ -9,27 +9,41 @@ import { initScheduledJob } from "@/pkg/scheduler";
 import { shutdown } from "@/shutdown";
 
 const env = initEnv();
-const { db, client } = initDb(env.DATABASE_URL);
-const logger = initLogger(env);
+const rootLogger = initLogger(env);
+const logger = rootLogger.child({ service: "runtime" });
+const dbLogger = logger.child({ component: "db" });
+const apiLogger = rootLogger.child({ service: "api" });
+const botLogger = rootLogger.child({ service: "bot" });
+const schedulerLogger = rootLogger.child({ service: "scheduler" });
+const { db, client } = initDb(env.DATABASE_URL, dbLogger);
 const llm = initLlm(env.OPENROUTER_API_KEY, env.OPENROUTER_MODEL);
-const { app, useCases, services } = await initApp({ env, db, logger });
-const bot = initBotApp({ env, db, logger, llm, linkedAccountUseCase: useCases.linkedAccount });
+const { app, useCases, services } = await initApp({ env, db, logger: apiLogger, dbLogger });
+const bot = initBotApp({
+  env,
+  db,
+  logger: botLogger,
+  llm,
+  linkedAccountUseCase: useCases.linkedAccount,
+});
 const sessionCleanup = initScheduledJob({
   name: "session-cleanup",
   intervalMs: 24 * 60 * 60 * 1000,
   run: () => services.session.cleanupExpiredSessions(),
-  logger,
+  logger: schedulerLogger,
 });
 
 await sessionCleanup.start();
-const httpServer = startHttp(app, logger, env.PORT);
-const botLifecycle = startBot(bot, logger);
+const httpServer = startHttp(app, apiLogger, env.PORT);
+const botLifecycle = startBot(bot, botLogger);
 
 process.on(
   "SIGTERM",
   () =>
     void shutdown("SIGTERM", {
       logger,
+      apiLogger,
+      botLogger,
+      schedulerLogger,
       bot,
       botLifecycle,
       httpServer,
@@ -42,6 +56,9 @@ process.on(
   () =>
     void shutdown("SIGINT", {
       logger,
+      apiLogger,
+      botLogger,
+      schedulerLogger,
       bot,
       botLifecycle,
       httpServer,

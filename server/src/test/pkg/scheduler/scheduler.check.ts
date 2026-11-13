@@ -1,12 +1,24 @@
-import pino from "pino";
 import assert from "node:assert/strict";
 import { mock } from "node:test";
 import { setImmediate as flush } from "node:timers/promises";
 
+import { initLogger } from "@/pkg/logger";
 import { initScheduledJob } from "@/pkg/scheduler";
 
 const logs: string[] = [];
-const logger = pino({ level: "info" }, { write: (line) => logs.push(line) });
+// Timer and failure behavior cannot be exercised through request-driven flows.
+const root = initLogger(
+  { NODE_ENV: "production" },
+  {
+    write(line) {
+      const entry = JSON.parse(line) as { service: string; job: string };
+      assert.equal(entry.service, "scheduler");
+      assert.ok(entry.job);
+      logs.push(line);
+    },
+  }
+);
+const logger = root.child({ service: "scheduler" });
 const intervalMs = 24 * 60 * 60 * 1000;
 mock.timers.enable({ apis: ["setTimeout"] });
 try {

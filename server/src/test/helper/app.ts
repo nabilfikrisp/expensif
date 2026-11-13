@@ -13,6 +13,7 @@ export async function initTest() {
       env,
       db: database.db,
       logger: initLogger(env),
+      dbLogger: initLogger(env).child({ service: "runtime", component: "db" }),
       rateLimitOverrides: {
         default: { limit: 1000, windowMs: 60_000 },
         login: { limit: 1000, windowMs: 60_000 },

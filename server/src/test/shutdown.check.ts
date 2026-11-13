@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 import { registerExpenseCommands } from "@/modules/expense/controllers/bot";
 import { initBot, startBot } from "@/pkg/bot/telegram";
 import type { DbClient } from "@/pkg/db";
+import { initLogger } from "@/pkg/logger";
 import { shutdown } from "@/shutdown";
 
 function gate() {
@@ -24,7 +25,8 @@ function gate() {
 // Mock only transport and resource closure; exercise real grammY polling and expense handling.
 const scenario = process.argv[2];
 if (scenario) {
-  const logger = pino({ level: "info" }, pino.destination({ dest: 1, sync: true }));
+  const root = initLogger({ NODE_ENV: "production" }, pino.destination({ dest: 1, sync: true }));
+  const logger = root.child({ service: "bot" });
   const bot = initBot({ token: "123:test", logger });
   bot.botInfo = {
     id: 999,
@@ -129,7 +131,10 @@ if (scenario) {
   const botLifecycle = startBot(bot, logger);
   await parsingStarted.promise;
   const options = {
-    logger,
+    logger: root.child({ service: "runtime" }),
+    apiLogger: root.child({ service: "api" }),
+    botLogger: logger,
+    schedulerLogger: root.child({ service: "scheduler" }),
     bot,
     botLifecycle,
     httpServer: {
@@ -192,7 +197,18 @@ if (scenario) {
     const entries = result.stdout
       .trim()
       .split("\n")
-      .map((line) => JSON.parse(line) as { msg: string; level: number });
+      .map((line) => JSON.parse(line) as { msg: string; level: number; service: string });
+    for (const entry of entries) {
+      const expected =
+        entry.msg === "HTTP server closed"
+          ? "api"
+          : entry.msg === "Scheduled jobs stopped"
+            ? "scheduler"
+            : entry.msg.startsWith("test:") || entry.msg.startsWith("Telegram")
+              ? "bot"
+              : "runtime";
+      assert.equal(entry.service, expected, entry.msg);
+    }
     const messages = entries.map((entry) => entry.msg);
     assert.ok(messages.includes("test: intake stopped while parsing"));
     if (testCase === "drain") {

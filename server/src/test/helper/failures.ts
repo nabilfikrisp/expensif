@@ -26,6 +26,7 @@ export async function withSessionWritesBlocked(
       env: context.env,
       db: drizzle({ client, relations }),
       logger: initLogger(context.env),
+      dbLogger: initLogger(context.env).child({ service: "runtime", component: "db" }),
     });
     await context.db.transaction(async (tx) => {
       await tx.execute(sql`LOCK TABLE ${sessions} IN SHARE MODE`);

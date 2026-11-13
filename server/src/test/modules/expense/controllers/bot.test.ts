@@ -212,7 +212,7 @@ describe("expense command ingestion", () => {
     await link();
     const url = new URL(ctx.env.DATABASE_URL);
     url.searchParams.set("options", "-c lock_timeout=100ms");
-    const database = initDb(url.toString());
+    const database = initDb(url.toString(), initLogger(ctx.env));
     try {
       const { bot, logError } = createBot(database.db);
       await ctx.db.transaction(async (tx) => {
@@ -492,7 +492,7 @@ describe("expense command ingestion", () => {
   it("logs a real database lookup failure and keeps processing commands", async () => {
     const url = new URL(ctx.env.DATABASE_URL);
     url.searchParams.set("options", "-c search_path=pg_catalog");
-    const database = initDb(url.toString());
+    const database = initDb(url.toString(), initLogger(ctx.env));
     try {
       const { bot, logError } = createBot(database.db);
       await bot.handleUpdate(command());

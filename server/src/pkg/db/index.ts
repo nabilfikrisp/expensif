@@ -3,9 +3,11 @@ import { Pool } from "pg";
 import type { PoolConfig } from "pg";
 
 import { relations } from "./relations";
+import type { Logger } from "@/pkg/logger";
 
 export function initDb(
   databaseUrl: string,
+  logger: Logger,
   options: Pick<PoolConfig, "connectionTimeoutMillis"> = {}
 ) {
   const client = new Pool({
@@ -13,6 +15,11 @@ export function initDb(
     max: 10,
     connectionTimeoutMillis: 5_000,
     ...options,
+  });
+
+  client.on("error", (err) => {
+    // Idle clients fail outside request handlers; pg removes the failed client from the pool.
+    logger.error({ err }, "Idle database client failed");
   });
 
   const db = drizzle({ client, relations });
